@@ -48,7 +48,7 @@ function selectedDomains(dataset, domainIds) {
   return domains.filter((domain) => visible.has(domain.id));
 }
 
-function createChart(container, title, description) {
+function createChart(container, title, description, captionText = "") {
   container.replaceChildren();
   const width = Math.max(580, container.clientWidth || 900);
   const height = 286;
@@ -83,12 +83,15 @@ function createChart(container, title, description) {
   scroller.append(svg);
   frame.append(scroller, tooltip);
   container.append(frame);
-  const caption = document.createElement("p");
-  caption.className = "chart-caption";
-  Object.assign(caption.style, { fontSize: "13px", lineHeight: "1.6", color: "#6c6d60", margin: "10px 0 0" });
-  container.append(caption);
+  if (captionText) {
+    const caption = document.createElement("p");
+    caption.className = "chart-caption";
+    caption.textContent = captionText;
+    Object.assign(caption.style, { fontSize: "13px", lineHeight: "1.6", color: "#6c6d60", margin: "10px 0 0" });
+    container.append(caption);
+  }
   const plot = {
-    svg, width, height, margin, caption, tooltip,
+    svg, width, height, margin, tooltip,
     right: width - margin.right,
     bottom: height - margin.bottom,
     y: (value) => margin.top + ((10 - value) / 9) * (height - margin.top - margin.bottom)
@@ -231,10 +234,9 @@ export function renderDailyChart(container, dataset, { date, domainIds, showMedi
       }
       for (const [score, entries] of scores) {
         const first = entries[0];
-        const scale = `1: ${domain.lowLabel || "low"}; 10: ${domain.highLabel || "high"}`;
         const details = entries.map((entry) => [entry.note, entry.context].filter(Boolean).join(" · ")).filter(Boolean);
-        const label = `${domain.label}: ${score}/10 at ${timeLabel(first.time)}${entries.length > 1 ? ` (${entries.length} entries)` : ""}. ${scale}.${details.length ? ` ${details.join("; ")}` : ""}`;
-        renderedPoints.push({ x: x(minute), score, domain, label, count: entries.length, tooltip: `${domain.label} · ${score}/10\n${timeLabel(first.time)}${entries.length > 1 ? ` · ${entries.length} entries` : ""}\n${scale}${details.length ? `\n${details.join("\n")}` : ""}` });
+        const label = `${domain.label}: ${score}/10 at ${timeLabel(first.time)}${entries.length > 1 ? ` (${entries.length} entries)` : ""}.${details.length ? ` ${details.join("; ")}` : ""}`;
+        renderedPoints.push({ x: x(minute), score, domain, label, count: entries.length, tooltip: `${domain.label} · ${score}/10\n${timeLabel(first.time)}${entries.length > 1 ? ` · ${entries.length} entries` : ""}${details.length ? `\n${details.join("\n")}` : ""}` });
         if (scores.size === 1) segment.push({ x: x(minute), score });
       }
       if (scores.size > 1) previousMinute = null;
@@ -248,7 +250,6 @@ export function renderDailyChart(container, dataset, { date, domainIds, showMedi
     if (!domains.length) emptyMessage(plot, "No symptoms selected", events.length ? "Medication events are shown at their recorded times." : "Select a symptom above to display its scores.");
     else emptyMessage(plot, "No check-ins for this day", events.length ? "Medication events are shown. Add a check-in to plot scores." : "Add a check-in to plot your scores.");
   }
-  plot.caption.textContent = `Points are recorded scores. Lines connect entries ≤3 hours apart; gaps stay open.${events.length ? " Pill markers show medication events; outlined pills indicate other statuses." : ""} Hover or tab for details.`;
 }
 
 /** Daily arithmetic means, with sample counts and no lines across missing days. */
@@ -259,8 +260,9 @@ export function renderTrendChart(container, dataset, { startDate, endDate, domai
   const first = startDate === undefined ? (observedDays.length ? observedDays.reduce((min, day) => Math.min(min, day), Infinity) : today - 6) : dateNumber(startDate);
   const last = endDate === undefined ? (observedDays.length ? observedDays.reduce((max, day) => Math.max(max, day), -Infinity) : today) : dateNumber(endDate);
   const validRange = first !== null && last !== null && first <= last;
-  const plot = createChart(container, "Daily symptom averages", "Each point is the arithmetic mean of the recorded scores for one symptom on one day. Each tooltip includes its observation count. Missing days have no values and break connecting lines. The vertical scale is 1 to 10; each symptom has its own scale endpoints. These are descriptive observations, not evidence of a medication effect.");
-  plot.caption.textContent = "Each point is a daily average of recorded scores; sample counts are in the details. Missing days stay open. Different check-in times can affect comparisons.";
+  const plot = createChart(container, "Daily symptom averages",
+    "Each point is the arithmetic mean of the recorded scores for one symptom on one day. Each tooltip includes its observation count. Missing days have no values and break connecting lines. The vertical scale is 1 to 10; each symptom has its own scale endpoints. These are descriptive observations, not evidence of a medication effect.",
+    "Each point is a daily average of recorded scores; sample counts are in the details. Missing days stay open. Different check-in times can affect comparisons.");
   if (!validRange) {
     emptyMessage(plot, "Choose a valid date range", "The end date needs to be on or after the start date.");
     return;
@@ -295,9 +297,9 @@ export function renderTrendChart(container, dataset, { startDate, endDate, domai
       const average = Number(score.toFixed(1));
       const minimum = scores.reduce((min, value) => Math.min(min, value), Infinity);
       const maximum = scores.reduce((max, value) => Math.max(max, value), -Infinity);
-      const label = `${domain.label} on ${dateLabel(day, true)}: daily average ${average}/10 from ${scores.length} ${scores.length === 1 ? "entry" : "entries"}; recorded range ${minimum}–${maximum}. 1: ${domain.lowLabel || "low"}; 10: ${domain.highLabel || "high"}.`;
+      const label = `${domain.label} on ${dateLabel(day, true)}: daily average ${average}/10 from ${scores.length} ${scores.length === 1 ? "entry" : "entries"}; recorded range ${minimum}–${maximum}.`;
       segment.push({ x: x(day), score });
-      renderedPoints.push({ x: x(day), score, domain, label, tooltip: `${domain.label} · average ${average}/10\n${dateLabel(day, true)} · ${scores.length} ${scores.length === 1 ? "entry" : "entries"}\nRecorded range: ${minimum}–${maximum}\n1: ${domain.lowLabel || "low"}; 10: ${domain.highLabel || "high"}` });
+      renderedPoints.push({ x: x(day), score, domain, label, tooltip: `${domain.label} · average ${average}/10\n${dateLabel(day, true)} · ${scores.length} ${scores.length === 1 ? "entry" : "entries"}\nRecorded range: ${minimum}–${maximum}` });
       previousDay = day;
       totalPoints++;
     }

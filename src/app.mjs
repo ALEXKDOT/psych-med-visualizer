@@ -1,5 +1,5 @@
 import { createBlankDataset, createDemoDataset, getDomains, domainLabel, makeId, localDateString, validateDataset } from './model.mjs';
-import { renderDailyChart, renderTrendChart } from './charts.mjs';
+import { renderDailyChart, renderTrendChart } from './charts.mjs?v=callouts-20260923';
 
 const $ = id => document.getElementById(id);
 const DEFAULT_TRACKERS = ['attention_focus', 'energy', 'sedation_fatigue', 'anxiety_distress', 'appetite_impact'];
