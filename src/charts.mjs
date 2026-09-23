@@ -2,7 +2,7 @@ import { getDomains } from "./model.mjs";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const DAY_MS = 86_400_000;
-const FALLBACK_COLORS = ["#477b68", "#d39154", "#b66c7c", "#7688ae", "#aa86b7", "#648d9b"];
+const FALLBACK_COLORS = ["#58694e", "#aa7547", "#a76770", "#71839a", "#917594", "#5b8290"];
 let chartSequence = 0;
 
 function svgElement(name, attributes = {}, text) {
@@ -77,15 +77,15 @@ function createChart(container, title, description) {
   tooltip.hidden = true;
   Object.assign(tooltip.style, {
     position: "absolute", zIndex: "2", left: "38px", bottom: "38px", maxWidth: "min(360px, calc(100% - 60px))",
-    padding: "10px 13px", borderRadius: "10px", background: "#283e35", color: "#fff", fontSize: "12px",
-    lineHeight: "1.55", boxShadow: "0 4px 16px #172d2520", pointerEvents: "none", whiteSpace: "pre-line"
+    padding: "11px 14px", borderRadius: "4px", background: "#383b31", color: "#fbf8ef", fontSize: "14px",
+    lineHeight: "1.55", boxShadow: "0 4px 16px #383b3120", pointerEvents: "none", whiteSpace: "pre-line"
   });
   scroller.append(svg);
   frame.append(scroller, tooltip);
   container.append(frame);
   const caption = document.createElement("p");
   caption.className = "chart-caption";
-  Object.assign(caption.style, { fontSize: "11px", lineHeight: "1.6", color: "#777c76", margin: "7px 0 0" });
+  Object.assign(caption.style, { fontSize: "13px", lineHeight: "1.6", color: "#6c6d60", margin: "10px 0 0" });
   container.append(caption);
   const plot = {
     svg, width, height, margin, caption, tooltip,
@@ -101,14 +101,14 @@ function drawHorizontalGrid({ svg, y, margin, right }) {
   for (const score of [1, 2, 4, 6, 8, 10]) {
     svg.append(svgElement("line", {
       x1: margin.left, x2: right, y1: y(score), y2: y(score),
-      stroke: "#e9e9e2", "stroke-width": 1, "stroke-dasharray": "3 5", "aria-hidden": "true"
+      stroke: "#e2ddcf", "stroke-width": 1, "aria-hidden": "true"
     }));
     svg.append(svgElement("text", {
-      x: margin.left - 13, y: y(score) + 3.5, fill: "#95988f", "font-size": 10,
+      x: margin.left - 13, y: y(score) + 3.5, fill: "#6c6d60", "font-size": 12,
       "text-anchor": "end", "aria-hidden": "true"
     }, score));
   }
-  svg.append(svgElement("text", { x: margin.left - 13, y: 19, fill: "#95988f", "font-size": 9, "text-anchor": "end", "aria-hidden": "true" }, "/10"));
+  svg.append(svgElement("text", { x: margin.left - 13, y: 19, fill: "#6c6d60", "font-size": 11, "text-anchor": "end", "aria-hidden": "true" }, "/10"));
 }
 
 function addTarget(plot, shape, label, tooltipText = label) {
@@ -133,11 +133,11 @@ function drawPoint(plot, x, score, domain, label, count = 1, tooltipText = label
   }));
   group.append(svgElement("circle", {
     cx: x, cy: plot.y(score), r: count > 1 ? 5.5 : 4.25,
-    fill: "#fffefa", stroke: domain.color, "stroke-width": 2.25, class: "journal-chart-dot"
+    fill: "#fbf8ef", stroke: domain.color, "stroke-width": 2.25, class: "journal-chart-dot"
   }));
   if (count > 1) {
     group.append(svgElement("text", {
-      x: x + 8, y: plot.y(score) - 7, fill: domain.color, "font-size": 9,
+      x: x + 8, y: plot.y(score) - 7, fill: domain.color, "font-size": 11,
       "font-weight": 600, "aria-hidden": "true"
     }, `×${count}`));
   }
@@ -157,9 +157,9 @@ function emptyMessage(plot, title, subtitle) {
   const center = (plot.margin.left + plot.right) / 2;
   const centerY = (plot.margin.top + plot.bottom) / 2;
   const group = svgElement("g", { role: "note" });
-  group.append(svgElement("rect", { x: center - 210, y: centerY - 30, width: 420, height: 65, rx: 12, fill: "#fffefa", "fill-opacity": 0.96 }));
-  group.append(svgElement("text", { x: center, y: centerY - 5, fill: "#5f6d64", "font-size": 14, "font-weight": 500, "text-anchor": "middle" }, title));
-  group.append(svgElement("text", { x: center, y: centerY + 16, fill: "#8a9189", "font-size": 11, "text-anchor": "middle" }, subtitle));
+  group.append(svgElement("rect", { x: center - 235, y: centerY - 34, width: 470, height: 72, rx: 3, fill: "#fbf8ef", "fill-opacity": 0.97 }));
+  group.append(svgElement("text", { x: center, y: centerY - 5, fill: "#383b31", "font-size": 17, "text-anchor": "middle" }, title));
+  group.append(svgElement("text", { x: center, y: centerY + 19, fill: "#6c6d60", "font-size": 13, "text-anchor": "middle" }, subtitle));
   plot.svg.append(group);
 }
 
@@ -174,7 +174,7 @@ function medicationText(event, dataset) {
 
 function drawMedication(plot, event, dataset, x, index, coincidentCount) {
   const taken = event.status === "taken";
-  const color = taken ? "#879075" : "#b88262";
+  const color = taken ? "#58694e" : "#a47455";
   const label = medicationText(event, dataset);
   const group = svgElement("g");
   group.append(svgElement("line", {
@@ -183,8 +183,8 @@ function drawMedication(plot, event, dataset, x, index, coincidentCount) {
   }));
   const top = 19 + (index % 2) * 3;
   group.append(svgElement("rect", { x: x - 9, y: top - 8, width: 18, height: 16, rx: 8, fill: "none", stroke: color, "stroke-width": 1.5, opacity: 0, class: "journal-chart-focus" }));
-  group.append(svgElement("rect", { x: x - 6, y: top - 4, width: 12, height: 8, rx: 4, fill: taken ? color : "#fffefa", stroke: color, "stroke-width": 1.4, transform: `rotate(-40 ${x} ${top})`, class: "journal-chart-dot" }));
-  if (taken) group.append(svgElement("path", { d: `M ${x - 2.6} ${top - 3.1} L ${x + 2.6} ${top + 3.1}`, stroke: "#fffefa", "stroke-width": 1 }));
+  group.append(svgElement("rect", { x: x - 6, y: top - 4, width: 12, height: 8, rx: 4, fill: taken ? color : "#fbf8ef", stroke: color, "stroke-width": 1.4, transform: `rotate(-40 ${x} ${top})`, class: "journal-chart-dot" }));
+  if (taken) group.append(svgElement("path", { d: `M ${x - 2.6} ${top - 3.1} L ${x + 2.6} ${top + 3.1}`, stroke: "#fbf8ef", "stroke-width": 1 }));
   const duplicate = coincidentCount > 1 ? `\n${coincidentCount} medication events recorded at this time; tab to inspect each.` : "";
   addTarget(plot, group, `${event.date} ${label}${duplicate}`, label + duplicate);
 }
@@ -201,7 +201,7 @@ export function renderDailyChart(container, dataset, { date, domainIds, showMedi
   const labels = ["12a", "3a", "6a", "9a", "12p", "3p", "6p", "9p", "12a"];
   for (let hour = 0; hour <= 24; hour += 3) {
     plot.svg.append(svgElement("text", {
-      x: x(hour * 60), y: plot.height - 11, fill: "#94998f", "font-size": 10,
+      x: x(hour * 60), y: plot.height - 11, fill: "#6c6d60", "font-size": 12,
       "text-anchor": hour === 0 ? "start" : hour === 24 ? "end" : "middle", "aria-hidden": "true"
     }, labels[hour / 3]));
   }
@@ -245,8 +245,8 @@ export function renderDailyChart(container, dataset, { date, domainIds, showMedi
   // Markers above all lines keep scores legible where two variables intersect.
   for (const point of renderedPoints) drawPoint(plot, point.x, point.score, point.domain, point.label, point.count, point.tooltip);
   if (!observations.length) {
-    if (!domains.length) emptyMessage(plot, "Choose a symptom to see its pattern", events.length ? "Medication events are still shown at their recorded times." : "Turn on a symptom to make it visible.");
-    else emptyMessage(plot, "A fresh page for your day", events.length ? "Medication recorded. Add a check-in to start your symptom chart." : "Add your first check-in to see your day take shape.");
+    if (!domains.length) emptyMessage(plot, "No symptoms selected", events.length ? "Medication events are shown at their recorded times." : "Select a symptom above to display its scores.");
+    else emptyMessage(plot, "No check-ins for this day", events.length ? "Medication events are shown. Add a check-in to plot scores." : "Add a check-in to plot your scores.");
   }
   plot.caption.textContent = `Points are recorded scores. Lines connect entries ≤3 hours apart; gaps stay open.${events.length ? " Pill markers show medication events; outlined pills indicate other statuses." : ""} Hover or tab for details.`;
 }
@@ -273,7 +273,7 @@ export function renderTrendChart(container, dataset, { startDate, endDate, domai
   if (ticks[ticks.length - 1] !== last && last - ticks[ticks.length - 1] > step * 0.6) ticks.push(last);
   for (const day of ticks) {
     plot.svg.append(svgElement("text", {
-      x: x(day), y: plot.height - 11, fill: "#94998f", "font-size": 10,
+      x: x(day), y: plot.height - 11, fill: "#6c6d60", "font-size": 12,
       "text-anchor": first === last ? "middle" : day === first ? "start" : day === last ? "end" : "middle", "aria-hidden": "true"
     }, dateLabel(day)));
   }
@@ -304,5 +304,5 @@ export function renderTrendChart(container, dataset, { startDate, endDate, domai
     drawSegment(plot, segment, domain);
   }
   for (const point of renderedPoints) drawPoint(plot, point.x, point.score, point.domain, point.label, 1, point.tooltip);
-  if (!totalPoints) emptyMessage(plot, domains.length ? "Your patterns will grow here" : "Choose a symptom to see its pattern", domains.length ? "Add check-ins in this date range to see daily averages." : "Turn on a symptom to make it visible.");
+  if (!totalPoints) emptyMessage(plot, domains.length ? "No check-ins in this date range" : "No symptoms selected", domains.length ? "Choose another range or add a check-in." : "Select a symptom to display its daily averages.");
 }

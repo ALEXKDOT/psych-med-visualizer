@@ -126,7 +126,7 @@ function renderTimeline() {
   const entries=[...(filter!=='medication'?dataset.observations.filter(o=>o.date===selectedDate).map(o=>({...o,type:'symptom'})):[]),...(filter!=='symptoms'?dataset.medicationEvents.filter(e=>e.date===selectedDate).map(e=>({...e,type:'medication'})):[])].sort((a,b)=>b.time.localeCompare(a.time)||a.id.localeCompare(b.id));
   $('entries-description').textContent=`${entries.length} ${entries.length===1?'entry':'entries'} · ${dateLabel(selectedDate)}`;
   $('timeline').replaceChildren();
-  if(!entries.length){const empty=node('div','empty-state');empty.append(node('strong','','A little detail goes a long way.'),node('p','','Add a symptom check-in or medication event to see it here.'));$('timeline').append(empty);return;}
+  if(!entries.length){const empty=node('div','empty-state');empty.append(node('strong','','No entries for this day.'),node('p','','Add a check-in or log a medication.'));$('timeline').append(empty);return;}
   for(const item of entries) {
     const row=node('div','timeline-row');const isMed=item.type==='medication';const content=node('div','timeline-content');
     content.append(node('strong','',isMed?item.medication:domainLabel(item.domain,dataset)));
