@@ -1,18 +1,12 @@
-import { createBlankDataset, createDemoDataset, getDomains, domainLabel, makeId, localDateString, validateDataset, migrateDataset } from './model.mjs';
+import { createBlankDataset, createDemoDataset, getDomains, domainLabel, makeId, localDateString, validateDataset } from './model.mjs';
 import { renderDailyChart, renderTrendChart } from './charts.mjs';
-import { datasetToCSV, downloadFile } from './portability.mjs';
 
 const $ = id => document.getElementById(id);
-const STORAGE_KEY = 'response-map-journal-v1';
-const LEGACY_KEY = 'response-map-dataset-v0.1';
-const PREFS_KEY = 'response-map-preferences-v1';
 const DEFAULT_TRACKERS = ['attention_focus', 'energy', 'sedation_fatigue', 'anxiety_distress', 'appetite_impact'];
-let expectedRaw = null;
-let recoveryRaw = null;
-let storageProblem = '';
-let isDemo = false;
-let dataset = loadDataset();
-let savedJournal = isDemo ? null : dataset;
+let isDemo = true;
+let dataset = createDemoDataset();
+let temporaryJournal = null;
+let temporaryPreferences = null;
 let selectedDate = localDateString();
 let currentView = 'journal';
 let trackedIds = [...DEFAULT_TRACKERS];
@@ -27,7 +21,6 @@ $('review-start').value = localDateString(journalStart);
 $('review-end').value = selectedDate;
 $('journal-date').value = selectedDate;
 $('quick-time').value = currentTime();
-loadPreferences();
 
 function node(tag, className, text) { const el = document.createElement(tag); if (className) el.className = className; if (text !== undefined) el.textContent = text; return el; }
 function currentTime() { return new Date().toTimeString().slice(0, 5); }
@@ -35,68 +28,21 @@ function clone(value) { return structuredClone(value); }
 function dateLabel(value, options = {}) { return new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...options }); }
 function timeLabel(value) { return new Date(`2000-01-01T${value}:00`).toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'}); }
 function toast(message) { $('toast').textContent = message; $('toast').classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 4200); }
-function reportStorageProblem(message) { storageProblem = message; $('storage-error').textContent = message; $('storage-error').hidden = !message; }
 function domains() { return getDomains(dataset); }
 function trackedDomains() { const available = new Map(domains().map(d => [d.id,d])); return trackedIds.map(id=>available.get(id)).filter(Boolean); }
 function clearQuickDraft() { quickValues.clear(); $('quick-note').value=''; $('quick-error').textContent=''; }
 function selectExistingValue(select, value) { if (![...select.options].some(option=>option.value===value)) select.add(new Option(value,value)); select.value=value; }
 
-function loadDataset() {
-  try {
-    expectedRaw = localStorage.getItem(STORAGE_KEY);
-    const raw = expectedRaw ?? localStorage.getItem(LEGACY_KEY);
-    if (raw) {
-      recoveryRaw = raw;
-      const loaded = migrateDataset(JSON.parse(raw));
-      recoveryRaw = null;
-      return loaded;
-    }
-  } catch (error) {
-    storageProblem = 'Your saved journal could not be opened. It has not been overwritten. You can download the saved data in Journal settings or restore a valid backup.';
-  }
-  isDemo = true;
-  return createDemoDataset();
-}
-function loadPreferences() {
-  try {
-    const value = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
-    if (value && Array.isArray(value.tracked) && Array.isArray(value.visible)) {
-      const valid = new Set(domains().map(d => d.id));
-      trackedIds = [...new Set(value.tracked.filter(id => valid.has(id)))];
-      visibleIds = new Set(value.visible.filter(id => trackedIds.includes(id)));
-    }
-  } catch { /* Preferences are optional; journal data are handled separately. */ }
-}
-function savePreferences() {
-  if (isDemo) return;
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify({tracked:trackedIds, visible:[...visibleIds]})); }
-  catch { toast('Your variable choices could not be saved on this device.'); }
-}
-function commit(next, {replace = false, start = false} = {}) {
+// The public app deliberately keeps all entries and choices in memory only.
+function commit(next, {start = false} = {}) {
   const errors = validateDataset(next);
-  if (errors.length) { toast(`Unable to save: ${errors[0]}`); return false; }
+  if (errors.length) { toast(`Unable to add entry: ${errors[0]}`); return false; }
   next.updatedAt = new Date().toISOString();
-  if (isDemo && !replace && !start) { dataset = next; render(); return true; }
-  try {
-    const latest = localStorage.getItem(STORAGE_KEY);
-    if (latest !== expectedRaw) {
-      reportStorageProblem('This journal changed in another tab. Reload this page before saving so neither set of entries is overwritten.');
-      return false;
-    }
-    const raw = JSON.stringify(next);
-    localStorage.setItem(STORAGE_KEY, raw);
-    expectedRaw = raw;
-    dataset = next;
-    savedJournal = next;
-    isDemo = false;
-    recoveryRaw = null;
-    reportStorageProblem('');
-    render();
-    return true;
-  } catch {
-    reportStorageProblem('This browser could not save your changes. Your previous journal is still intact. Export a backup of the existing journal, then check browser storage permissions or free up space.');
-    return false;
-  }
+  dataset = next;
+  if (start) isDemo = false;
+  if (!isDemo) temporaryJournal = next;
+  render();
+  return true;
 }
 function transact(change) { const next = clone(dataset); change(next); return commit(next); }
 
@@ -105,13 +51,10 @@ function render() {
   trackedIds = trackedIds.filter(id=>valid.has(id));
   visibleIds = new Set([...visibleIds].filter(id=>trackedIds.includes(id)));
   $('demo-banner').hidden = !isDemo;
-  $('start-journal').textContent = savedJournal ? 'Return to my journal →' : 'Start my journal →';
-  $('profile-alias').textContent = isDemo ? 'Sample journal' : dataset.patient.alias;
-  $('storage-status').textContent = isDemo ? 'Sample data · not saved' : 'Saved on this device';
-  $('footer-mode').textContent = isDemo ? 'Fictional sample data' : 'Stored on this device';
-  $('storage-error').hidden = !storageProblem;
-  $('storage-error').textContent = storageProblem;
-  $('recover-data').hidden = !recoveryRaw;
+  $('start-journal').textContent = temporaryJournal ? 'Return to session →' : 'Start a blank session →';
+  $('profile-alias').textContent = isDemo ? 'Sample journal' : 'Temporary session';
+  $('storage-status').textContent = 'Session only · nothing saved';
+  $('footer-mode').textContent = 'Entries disappear on refresh';
   $('day-label').textContent = dateLabel(selectedDate, {weekday:'long',year:'numeric'});
   const observations = dataset.observations.filter(o=>o.date===selectedDate);
   const meds = dataset.medicationEvents.filter(e=>e.date===selectedDate);
@@ -141,7 +84,7 @@ function renderToggles(targetId) {
   for (const d of trackedDomains()) {
     const label = node('label','variable-toggle');
     const checkbox = node('input'); checkbox.type='checkbox'; checkbox.checked=visibleIds.has(d.id); checkbox.setAttribute('aria-label',`Show ${d.label}`);
-    checkbox.addEventListener('change',()=> { checkbox.checked ? visibleIds.add(d.id) : visibleIds.delete(d.id); savePreferences(); renderToggles('variable-toggles'); renderToggles('trend-toggles'); renderDailyChart($('daily-chart'),dataset,{date:selectedDate,domainIds:[...visibleIds],showMedication}); if(currentView==='trends') renderReview(); });
+    checkbox.addEventListener('change',()=> { checkbox.checked ? visibleIds.add(d.id) : visibleIds.delete(d.id); renderToggles('variable-toggles'); renderToggles('trend-toggles'); renderDailyChart($('daily-chart'),dataset,{date:selectedDate,domainIds:[...visibleIds],showMedication}); if(currentView==='trends') renderReview(); });
     const swatch = node('span','swatch'); swatch.style.backgroundColor=d.color;
     label.append(checkbox,swatch,document.createTextNode(d.label)); target.append(label);
   }
@@ -215,7 +158,7 @@ function openEntry(type,existing=null,time=null) {
   $('entry-note').value=existing?.note||'';
   const med=type==='medication';$('medication-fields').hidden=!med;$('symptom-fields').hidden=med;
   $('entry-title').textContent=existing?`Edit ${med?'medication event':'rating'}`:med?'Log medication':'Add a check-in';
-  $('save-entry').textContent=existing?'Save changes':med?'Save medication event':'Save check-in';
+  $('save-entry').textContent=existing?'Update entry':med?'Add medication event':'Add check-in';
   for(const id of ['medication-name','medication-formulation','medication-dose'])$(id).required=med;
   if(med){
     $('medication-name').value=existing?.medication||'';$('medication-formulation').value=existing?.formulation||'';$('medication-dose').value=existing?.doseText||'';$('medication-status').value=existing?.status||'taken';
@@ -237,7 +180,7 @@ $('quick-form').addEventListener('submit',event=>{
   event.preventDefault();$('quick-error').textContent='';
   if(!quickValues.size){$('quick-error').textContent='Choose a rating for at least one variable.';return;}
   const values={date:selectedDate,time:$('quick-time').value,reporter:'Patient',context:$('quick-context').value,note:$('quick-note').value.trim()};
-  if(transact(next=>addObservations(next,quickValues,values))){quickValues.clear();$('quick-note').value='';renderQuickRatings();toast(isDemo?'Sample check-in added. Start your journal to save real entries.':'Check-in saved.');}
+  if(transact(next=>addObservations(next,quickValues,values))){quickValues.clear();$('quick-note').value='';renderQuickRatings();toast(isDemo?'Sample check-in added to this session.':'Check-in added for this session.');}
 });
 $('entry-form').addEventListener('submit',event=>{
   event.preventDefault();$('entry-error').textContent='';const type=$('entry-type').value;const id=$('entry-id').value;
@@ -254,13 +197,12 @@ $('entry-form').addEventListener('submit',event=>{
   }
   const errors=validateDataset(next);if(errors.length){$('entry-error').textContent=errors[0];return;}
   const previousDate=selectedDate;selectedDate=date;
-  if(commit(next)){$('journal-date').value=selectedDate;if(entryFromQuick||previousDate!==date){clearQuickDraft();renderQuickRatings();}$('entry-dialog').close();toast(id?'Entry updated.':type==='medication'?'Medication event saved.':'Check-in saved.');}
-  else {selectedDate=previousDate;$('entry-error').textContent='Could not save. See the storage message on the page; your draft is still here.';}
+  if(commit(next)){$('journal-date').value=selectedDate;if(entryFromQuick||previousDate!==date){clearQuickDraft();renderQuickRatings();}$('entry-dialog').close();toast(id?'Entry updated.':type==='medication'?'Medication event added for this session.':'Check-in added for this session.');}
+  else {selectedDate=previousDate;$('entry-error').textContent='Could not add this entry. Check the fields and try again.';}
 });
 
 function renderSettings() {
-  $('profile-name').value=dataset.patient.alias;$('profile-goal').value=dataset.episode.label;
-  renderCatalog();$('explore-demo').textContent=isDemo&&savedJournal?'Return to my journal':'Explore sample journal';
+  renderCatalog();$('explore-demo').textContent=isDemo&&temporaryJournal?'Return to session':'Explore sample journal';
 }
 function renderCatalog() {
   const search=$('tracker-search').value.trim().toLocaleLowerCase();const list=domains().filter(d=>`${d.label} ${d.group}`.toLocaleLowerCase().includes(search));
@@ -269,21 +211,20 @@ function renderCatalog() {
     const section=node('section','tracker-group');section.append(node('h3','',group));
     for(const d of list.filter(d=>d.group===group)){
       const label=node('label','tracker-item');const input=node('input');input.type='checkbox';input.checked=trackedIds.includes(d.id);
-      input.addEventListener('change',()=>{if(input.checked){trackedIds.push(d.id);visibleIds.add(d.id);}else{trackedIds=trackedIds.filter(id=>id!==d.id);visibleIds.delete(d.id);}savePreferences();renderToggles('variable-toggles');renderToggles('trend-toggles');renderQuickRatings();});
+      input.addEventListener('change',()=>{if(input.checked){trackedIds.push(d.id);visibleIds.add(d.id);}else{trackedIds=trackedIds.filter(id=>id!==d.id);visibleIds.delete(d.id);}renderToggles('variable-toggles');renderToggles('trend-toggles');renderQuickRatings();});
       const text=node('span','',d.label);text.append(node('small','',`1 · ${d.lowLabel} / 10 · ${d.highLabel}`));label.append(input,text);section.append(label);
     }
     $('tracker-catalog').append(section);
   }
   if(!list.length)$('tracker-catalog').append(node('p','empty-state','No matching variables. You can add a custom variable.'));
 }
-$('profile-form').addEventListener('submit',event=>{event.preventDefault();if(transact(next=>{next.patient.alias=$('profile-name').value.trim();next.episode.label=$('profile-goal').value.trim();}))toast('Journal details saved.');});
 $('custom-form').addEventListener('submit',event=>{
   event.preventDefault();const label=$('custom-label').value.trim();const low=$('custom-low').value.trim();const high=$('custom-high').value.trim();
   if(!label||!low||!high){$('custom-error').textContent='Enter a name and both scale descriptions.';return;}
   if(domains().some(d=>d.label.toLowerCase()===label.toLowerCase())){$('custom-error').textContent='A variable with this name already exists.';return;}
   const id=makeId('custom');const d={id,label,group:'Custom',kind:'custom',lowLabel:low,highLabel:high,color:'#64748b'};
   const next=clone(dataset);next.customDomains.push(d);
-  if(commit(next)){trackedIds.push(id);visibleIds.add(id);savePreferences();$('custom-dialog').close();$('tracker-search').value='';render();toast('Custom variable added.');}
+  if(commit(next)){trackedIds.push(id);visibleIds.add(id);$('custom-dialog').close();$('tracker-search').value='';render();toast('Custom variable added.');}
 });
 function reviewRange() { const startDate=$('review-start').value,endDate=$('review-end').value;const error=!startDate||!endDate?'Choose both dates.':startDate>endDate?'The start date must be on or before the end date.':'';$('review-error').textContent=error;return error?null:{startDate,endDate}; }
 function inRange(item,range){return item.date>=range.startDate&&item.date<=range.endDate;}
@@ -294,7 +235,7 @@ function renderReview() {
   const meds=dataset.medicationEvents.filter(e=>inRange(e,range)).sort((a,b)=>`${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
   const dates=new Set([...observations,...meds].map(o=>o.date));
   $('review-count').textContent=`${dates.size} days with entries`;
-  $('summary-subtitle').textContent=`${isDemo?'FICTIONAL SAMPLE · ':''}${dataset.patient.alias} · ${dateLabel(range.startDate,{year:'numeric'})} – ${dateLabel(range.endDate,{year:'numeric'})} · ${dataset.episode.label}`;
+  $('summary-subtitle').textContent=`${isDemo?'FICTIONAL SAMPLE · ':''}Temporary session · ${dateLabel(range.startDate,{year:'numeric'})} – ${dateLabel(range.endDate,{year:'numeric'})} · ${dataset.episode.label}`;
   renderTrendChart($('trend-chart'),dataset,{...range,domainIds:[...visibleIds]});
   $('review-summary').replaceChildren();
   [[observations.length,'symptom ratings'],[meds.length,'medication events'],[new Set(observations.map(o=>o.reporter)).size,'reporter types']].forEach(([value,label])=>{const card=node('div','review-stat');card.append(node('strong','',String(value)),document.createTextNode(label));$('review-summary').append(card);});
@@ -303,39 +244,27 @@ function renderReview() {
 }
 function changeDate(date) { if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;selectedDate=date;$('journal-date').value=date;quickValues.clear();$('quick-note').value='';$('quick-error').textContent='';render(); }
 function moveDate(offset) {const date=new Date(`${selectedDate}T12:00:00`);date.setDate(date.getDate()+offset);changeDate(localDateString(date));}
+function resetChoices() { trackedIds=[...DEFAULT_TRACKERS]; visibleIds=new Set(DEFAULT_TRACKERS); showMedication=true; $('show-medication').checked=true; }
 function startJournal() {
-  if(isDemo&&savedJournal){dataset=savedJournal;isDemo=false;clearQuickDraft();loadPreferences();render();toast('Your journal is open.');return;}
-  if(recoveryRaw&&!confirm('Saved data could not be read. Starting a new journal will replace it. Download the unreadable data in Journal settings first if you need to keep it. Continue?'))return;
-  const next=createBlankDataset();next.patient.alias='My journal';next.episode.label='My ADHD symptom journal';
-  if(commit(next,{start:true})){trackedIds=[...DEFAULT_TRACKERS];visibleIds=new Set(DEFAULT_TRACKERS);clearQuickDraft();savePreferences();changeDate(localDateString());toast('Your journal is ready. Add your first check-in.');}
+  if(isDemo&&temporaryJournal){
+    dataset=temporaryJournal; isDemo=false; clearQuickDraft();
+    if(temporaryPreferences){ trackedIds=[...temporaryPreferences.tracked]; visibleIds=new Set(temporaryPreferences.visible); }
+    render(); toast('Your temporary session is open.'); return;
+  }
+  const next=createBlankDataset(); next.patient.alias='Temporary session'; next.episode.label='ADHD symptom journal';
+  if(commit(next,{start:true})){resetChoices();clearQuickDraft();changeDate(localDateString());toast('Blank session ready. Entries disappear when you refresh or close this page.');}
 }
 function toggleDemo() {
-  if(isDemo&&savedJournal){startJournal();return;}
-  if(!isDemo){savedJournal=dataset;dataset=createDemoDataset();isDemo=true;trackedIds=[...DEFAULT_TRACKERS];visibleIds=new Set(DEFAULT_TRACKERS);clearQuickDraft();selectedDate=localDateString();$('journal-date').value=selectedDate;setView('journal');toast('Sample journal opened. Your own entries are kept separately.');}
-  else {setView('journal');}
+  if(isDemo&&temporaryJournal){startJournal();return;}
+  if(!isDemo){
+    temporaryJournal=dataset; temporaryPreferences={tracked:[...trackedIds],visible:[...visibleIds]};
+    dataset=createDemoDataset();isDemo=true;resetChoices();clearQuickDraft();selectedDate=localDateString();$('journal-date').value=selectedDate;setView('journal');toast('Fictional sample opened. Your temporary session is kept only until you leave.');
+  } else setView('journal');
 }
-$('import-file').addEventListener('change',async event=>{
-  const file=event.target.files?.[0];if(!file)return;
-  try{
-    if(file.size>10_000_000)throw new Error('The file is larger than the 10 MB backup limit.');
-    const next=migrateDataset(JSON.parse(await file.text()));
-    const errors=validateDataset(next);if(errors.length)throw new Error(errors[0]);
-    if(!confirm(`Restore “${next.patient.alias}” with ${next.observations.length} ratings and ${next.medicationEvents.length} medication events? This replaces your saved journal. Download a backup first if needed.`))return;
-    if(commit(next,{replace:true})){trackedIds=[...new Set([...DEFAULT_TRACKERS,...next.observations.map(o=>o.domain)])];visibleIds=new Set(trackedIds.slice(0,6));quickValues.clear();savePreferences();render();toast('Backup restored.');}
-  }catch(error){alert(`This backup could not be restored. ${error.message}`);}finally{event.target.value='';}
-});
 $('clear-journal').addEventListener('click',()=>{
-  if(!confirm(isDemo?'Reset the fictional sample journal? Your saved journal will be kept.':'Permanently clear all saved ratings, medication events, custom variables, and journal details from this browser? Download a backup first if you need to keep them.'))return;
-  if(isDemo){dataset=createDemoDataset();trackedIds=[...DEFAULT_TRACKERS];visibleIds=new Set(DEFAULT_TRACKERS);quickValues.clear();render();toast('Sample journal reset.');return;}
-  const next=createBlankDataset();next.patient.alias='My journal';next.episode.label='My ADHD symptom journal';
-  if(commit(next)){trackedIds=[...DEFAULT_TRACKERS];visibleIds=new Set(DEFAULT_TRACKERS);quickValues.clear();savePreferences();render();toast('Journal cleared.');}
+  discardSession();toast('Session cleared. Nothing has been saved.');
 });
-$('export-json').addEventListener('click',()=>{downloadFile(`responsemap-${isDemo?'sample-':''}${localDateString()}.json`,JSON.stringify(dataset,null,2),'application/json');toast('Backup downloaded. Keep it somewhere private.');});
-$('recover-data').addEventListener('click',()=>{if(recoveryRaw)downloadFile('responsemap-recovery.json',recoveryRaw,'application/json');});
-$('export-csv').addEventListener('click',()=>{const range=reviewRange();if(range){downloadFile(`responsemap-${range.startDate}-to-${range.endDate}.csv`,datasetToCSV(dataset,range),'text/csv;charset=utf-8');toast('CSV exported for the selected date range.');}});
-$('print-summary').addEventListener('click',()=>{if(reviewRange()){renderReview();window.print();}});
 $('review-start').addEventListener('change',renderReview);$('review-end').addEventListener('change',renderReview);
-$('import-json').addEventListener('click',()=>$('import-file').click());
 $('tracker-search').addEventListener('input',renderCatalog);
 $('explore-demo').addEventListener('click',toggleDemo);
 $('start-journal').addEventListener('click',startJournal);
@@ -350,7 +279,25 @@ $('journal-date').addEventListener('change',event=>{if(event.target.value)change
 $('show-medication').addEventListener('change',event=>{showMedication=event.target.checked;renderDailyChart($('daily-chart'),dataset,{date:selectedDate,domainIds:[...visibleIds],showMedication});});
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.close).close()));
-window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY&&event.newValue!==expectedRaw)reportStorageProblem('This journal changed in another tab. Reload this page before saving to see the latest entries.');});
-window.addEventListener('beforeprint',()=>{renderToggles('trend-toggles');renderReview();});
 let resizeTimer;window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{renderDailyChart($('daily-chart'),dataset,{date:selectedDate,domainIds:[...visibleIds],showMedication});if(currentView==='trends')renderReview();},150);});
+function discardSession() {
+  clearTimeout(toastTimer); clearTimeout(resizeTimer);
+  dataset=createBlankDataset();dataset.patient.alias='Temporary session';dataset.episode.label='ADHD symptom journal';
+  temporaryJournal=null;temporaryPreferences=null;isDemo=false;
+  quickValues.clear();entryValues.clear();entryFromQuick=false;resetChoices();
+  for(const form of document.forms)form.reset();
+  $('entry-id').value='';$('entry-type').value='';$('entry-filter').value='all';
+  const rangeStart=new Date();rangeStart.setDate(rangeStart.getDate()-6);
+  $('review-start').value=localDateString(rangeStart);$('review-end').value=localDateString();
+  for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
+  for(const id of ['quick-ratings','entry-ratings','entry-link','medication-suggestions','review-summary','review-medications','review-observations','review-count','trend-chart','summary-subtitle','toast'])$(id).replaceChildren();
+  for(const id of ['quick-error','entry-error','custom-error','review-error'])$(id).textContent='';
+  $('tracker-search').value='';$('toast').classList.remove('visible');
+  $('entry-reporter').replaceChildren(...['Patient','Caregiver','Teacher','Clinician','Other'].map(value=>new Option(value,value)));
+  $('entry-context').replaceChildren(...['Home','Work','School','Transit','Bedtime','Other'].map(value=>new Option(value,value)));
+  selectedDate=localDateString();$('journal-date').value=selectedDate;$('quick-time').value=currentTime();
+  currentView='journal';setView('journal');renderCatalog();
+}
+window.addEventListener('pagehide',discardSession);
+window.addEventListener('pageshow',event=>{if(event.persisted)discardSession();});
 render();

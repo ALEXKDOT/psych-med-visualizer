@@ -1,35 +1,41 @@
 # ResponseMap
 
-An ADHD symptom and medication journal that helps patients bring specific observations to conversations with their providers. Record how you feel throughout the day, put medication events on the same timeline, and compare days without relying on memory alone.
+An interactive ADHD symptom and medication journal for patients and conversations with their providers. Record observations throughout the day, place medication events on the same timeline, and select the variables you want to compare.
 
-Source: [ALEXKDOT/psych-med-visualizer](https://github.com/ALEXKDOT/psych-med-visualizer) — private repository; access is required.
+**[Open the public app](https://alexkdot.github.io/psych-med-visualizer/)** · [Source code](https://github.com/ALEXKDOT/psych-med-visualizer)
+
+## Session-only privacy
+
+Version 1.1 keeps entries only in the open page's memory. It does not save journal entries, medication events, notes, custom variables, or chart preferences to browser storage or a server. Reloading or closing the page ends the session, and returning through browser history starts fresh. This is a temporary workspace, not a retained medical record.
+
+Start with fictional sample data or a blank session. There are no accounts, patient profile fields, uploads, downloads, saved backups, or provider sharing. Avoid names, contact details, record numbers, or other identifying information in free-text fields. Anything typed is visible to people with access to the open page.
+
+The app has no analytics, external fonts, third-party scripts, cloud database, or data API. Its Content Security Policy blocks outgoing data connections and form submissions. GitHub receives ordinary requests for the static application files and may retain hosting information such as IP addresses; the app does not include journal contents in those requests. This is not a claim that the host receives no visitor information.
+
+Older versions saved journals in browser storage. This version does not read, migrate, overwrite, or delete those old records. Use your browser's site-data controls if you want to remove them. The public GitHub Pages address is a different origin from the original local development address and cannot read its saved records.
 
 ## What it does
 
 - Manual check-ins at any time, including hourly, with whole-number ratings from 1 to 10. Ratings begin unrated; choose only what you want to record.
-- A searchable catalog of 42 variables covering attention, mood, energy, sleep, appetite, and physical experiences. Add custom variables with your own descriptions of what 1 and 10 mean.
-- Medication events with medication name, formulation, dose text, local date and time, and taken, missed, partial, or unknown status. Different events can record different medications and doses.
+- A searchable catalog of 42 variables covering attention, mood, energy, sleep, appetite, and physical experiences. Add custom variables with descriptions of what 1 and 10 mean.
+- Medication events with medication name, formulation, dose text, local date and time, and taken, missed, partial, or unknown status. Each event can describe a different medication or dose.
 - Daily line charts with independently selectable variables and medication markers. Hover or focus a point for details. Lines connect recorded points up to three hours apart; longer gaps stay open.
-- Editable and deletable entries, reporter and context fields, notes, and optional explicit links between a rating and a medication event.
-- Date-range review with daily averages, observation counts, recorded entries, and a printable visit summary. Export the range as CSV or use the browser print dialog to save a PDF.
-- Full-journal JSON backup and restore, including custom variables and all dates. Validated imports include migration from the earlier 0.1.0 format.
-- Fictional sample data kept separate from your saved journal. Select **Start my journal** to begin saving your own entries.
+- Editable and deletable entries, reporter roles, context, notes, and optional explicit links between a rating and a medication event.
+- Date-range review of the current session, with daily averages, observation counts, and recorded entries.
 
-Hourly recording is a manual workflow. The app does not schedule notifications, collect sensor measurements, or automatically contact a provider. A higher score is not always better: each variable has its own scale descriptions.
+Hourly recording is manual. The app does not schedule notifications, collect sensor measurements, or contact a provider. Each variable has its own scale: a higher score is not always better. The app organizes observations; it does not diagnose, establish medication effects, or recommend treatment changes.
 
 ## Run locally
 
-Use Node.js 20 or later and a modern browser. The app has no package dependencies and does not need an install step.
-
-From this directory:
+Use Node.js 20 or later and a modern browser. There are no package dependencies and no install step.
 
 ```sh
 npm run dev
 ```
 
-Open [ResponseMap locally](http://127.0.0.1:4173). To use a different port, set `RESPONSE_MAP_PORT` before starting the server. Keep using the same browser and address to access the same saved journal; browser storage is specific to an origin.
+Open [ResponseMap locally](http://127.0.0.1:4173). To use a different port, set `RESPONSE_MAP_PORT` before starting the server. Local sessions have the same temporary behavior as the public app.
 
-## Check and build
+## Check and publish
 
 ```sh
 npm test
@@ -37,16 +43,12 @@ npm run check
 npm run build
 ```
 
-The tests exercise journal validation, migration, calculations, and exports. The syntax check covers application modules and build/server scripts. CI runs these three commands with Node.js 24; it does not publish the app.
+The tests cover journal validation, calculations, compatibility utilities, and public-app privacy safeguards. Syntax checks cover the application modules and build/server scripts. The build recreates `dist/` from an explicit allowlist of six static assets: `index.html`, `styles.css`, `favicon.svg`, and the three browser modules in `src/`. It excludes the development server, documentation, tests, private configuration, user files, and the unused portability module.
 
-The build recreates `dist/` using an explicit allowlist: `index.html`, `styles.css`, `favicon.svg`, and the four browser modules in `src/`. It excludes the development server, documentation, tests, private configuration, and journal backups.
+GitHub Pages publishes only `dist/`. The [Pages workflow](.github/workflows/pages.yml) runs tests, syntax checks, and the build on each push to `main`, then deploys the generated files. It can also be run manually. In repository **Settings → Pages**, choose **GitHub Actions** as the build source. The deployment uses the `github-pages` environment with narrowly scoped publishing permissions, following [GitHub's custom Pages workflow guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages). The existing CI workflow also checks pull requests.
 
-To deploy, serve **only `dist/`** with an HTTPS static host. Keep its directory structure intact and serve `.mjs` files with a JavaScript content type. The assets use relative paths and support hosting under a subdirectory. Hosting the assets does not create shared patient accounts or provider access. Moving to a new origin does not move an existing journal; export a JSON backup and restore it there if desired.
+Assets use relative paths so the app works at the repository subpath. A failed check prevents that workflow run from deploying. Publishing this static site does not publish a user's open session or create shared provider access.
 
-## Your data
+The source repository is public. Its published source and history contain application code and fictional test/sample records, not patient journals. Keep real records, credentials, backups, and identifying screenshots out of commits, issues, and pull requests.
 
-Version 1.0 stores one journal in unencrypted `localStorage` in the current browser profile. Anyone who can use that profile may be able to read it. Clearing browser data can remove the journal; JSON backups are manual and are also unencrypted. Importing a backup replaces the current journal after confirmation. A CSV or printed report is a review export, not a restorable backup.
-
-The browser app has no analytics, external fonts, third-party scripts, cloud database, account system, or network data API. A static host still receives ordinary requests for the application files. The app is not an encrypted clinical record system and makes no HIPAA or regulatory compliance claim. Use a nickname and avoid unnecessary identifying details. It organizes observations; it does not diagnose, establish medication effects, or recommend treatment changes.
-
-See [product boundaries](docs/PRODUCT_BOUNDARY.md) and the [data dictionary](docs/DATA_DICTIONARY.md) for details.
+See the [product boundaries](docs/PRODUCT_BOUNDARY.md) and [data dictionary](docs/DATA_DICTIONARY.md) for details.

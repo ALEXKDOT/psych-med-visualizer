@@ -10,3 +10,6 @@
 /* Keep the primary check-in form ahead of long histories on smaller screens. */
 @media(max-width:1050px){.journal-main,.journal-right{display:contents}.chart-card{order:1}.quick-card{order:2}.hour-card{order:3}.timeline-card{order:4}.gentle-note{order:5}.device-note{order:6}.quick-card{grid-row:auto}}
 @media(max-width:760px){.sidebar nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.nav-item{flex-direction:column;min-width:0;white-space:normal;padding:8px 4px;gap:5px;text-align:center}.nav-item>span{font-size:1rem;width:auto}}
+
+.privacy-banner{border:1px solid #cddcf0;background:#f0f5fc;color:#425979;font-size:.8125rem;line-height:1.7;padding:14px 17px;border-radius:10px;margin-bottom:24px}.privacy-banner strong{color:#284874}.local-badge{font-size:.58rem}
+@media print{.privacy-banner{display:block;font-size:10px}}

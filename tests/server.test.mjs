@@ -14,7 +14,7 @@ async function fixture(t) {
     writeFile(join(rootDirectory, "index.html"), "<!doctype html><title>Journal ✓</title>"),
     writeFile(join(rootDirectory, "styles.css"), "body { color: navy; }"),
     writeFile(join(rootDirectory, "favicon.svg"), '<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
-    ...["app", "model", "charts", "portability"].map((name) => writeFile(join(rootDirectory, "src", `${name}.mjs`), `export const name = "${name}";`)),
+    ...["app", "model", "charts"].map((name) => writeFile(join(rootDirectory, "src", `${name}.mjs`), `export const name = "${name}";`)),
     writeFile(join(rootDirectory, "server.mjs"), "SERVER_SOURCE_TEST_SENTINEL"),
     writeFile(join(rootDirectory, ".env"), "ENVIRONMENT_TEST_SENTINEL"),
     writeFile(join(rootDirectory, ".git", "config"), "GIT_CONFIG_TEST_SENTINEL"),
@@ -52,7 +52,7 @@ test("only explicit browser assets are served with correct MIME types", async (t
     ["/index.html", "text/html; charset=utf-8"],
     ["/styles.css", "text/css; charset=utf-8"],
     ["/favicon.svg", "image/svg+xml"],
-    ...["app", "model", "charts", "portability"].map((name) => [`/src/${name}.mjs`, "text/javascript; charset=utf-8"])
+    ...["app", "model", "charts"].map((name) => [`/src/${name}.mjs`, "text/javascript; charset=utf-8"])
   ];
   for (const [url, type] of routes) {
     const result = await request(handler, { url });
@@ -65,7 +65,7 @@ test("only explicit browser assets are served with correct MIME types", async (t
 
 test("repository, configuration, backup files, and directories cannot be downloaded", async (t) => {
   const { handler } = await fixture(t);
-  for (const url of ["/.git/config", "/.env", "/journal-backup.json", "/server.mjs", "/README.md", "/package.json", "/src/", "/tests/server.test.mjs"]) {
+  for (const url of ["/.git/config", "/.env", "/journal-backup.json", "/server.mjs", "/README.md", "/package.json", "/src/", "/src/portability.mjs", "/tests/server.test.mjs"]) {
     const result = await request(handler, { url });
     assert.equal(result.status, 404, url);
     assert.equal(result.body, "Not found", url);

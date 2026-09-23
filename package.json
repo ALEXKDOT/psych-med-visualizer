@@ -1,7 +1,7 @@
 {
   "name": "responsemap-adhd-journal",
-  "version": "1.0.0",
-  "description": "A local-first ADHD symptom and medication journal for patients and provider conversations.",
+  "version": "1.1.0",
+  "description": "A session-only ADHD symptom and medication journal with no saved patient records.",
   "private": true,
   "type": "module",
   "engines": {

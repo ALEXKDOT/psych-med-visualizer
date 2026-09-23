@@ -12,8 +12,7 @@ const assets = [
   "favicon.svg",
   "src/app.mjs",
   "src/model.mjs",
-  "src/charts.mjs",
-  "src/portability.mjs"
+  "src/charts.mjs"
 ];
 
 // Check all sources before replacing a previous build. Symlinks are not assets.
