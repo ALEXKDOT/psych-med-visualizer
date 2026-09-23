@@ -248,7 +248,7 @@ export function renderDailyChart(container, dataset, { date, domainIds, showMedi
   for (const point of renderedPoints) drawPoint(plot, point.x, point.score, point.domain, point.label, point.count, point.tooltip);
   if (!observations.length) {
     if (!domains.length) emptyMessage(plot, "No symptoms selected", events.length ? "Medication events are shown at their recorded times." : "Select a symptom above to display its scores.");
-    else emptyMessage(plot, "No check-ins for this day", events.length ? "Medication events are shown. Add a check-in to plot scores." : "Add a check-in to plot your scores.");
+    else emptyMessage(plot, "No check-ins for this day", events.length ? "Medication events are shown. Add a check-in to plot scores." : "Add a check-in to display scores.");
   }
 }
 
@@ -262,7 +262,7 @@ export function renderTrendChart(container, dataset, { startDate, endDate, domai
   const validRange = first !== null && last !== null && first <= last;
   const plot = createChart(container, "Daily symptom averages",
     "Each point is the arithmetic mean of the recorded scores for one symptom on one day. Each tooltip includes its observation count. Missing days have no values and break connecting lines. The vertical scale is 1 to 10; each symptom has its own scale endpoints. These are descriptive observations, not evidence of a medication effect.",
-    "Each point is a daily average of recorded scores; sample counts are in the details. Missing days stay open. Different check-in times can affect comparisons.");
+    "Points show daily averages. Hover over or focus on a point for the entry count. Days without entries appear as gaps. Check-in times may differ between days.");
   if (!validRange) {
     emptyMessage(plot, "Choose a valid date range", "The end date needs to be on or after the start date.");
     return;

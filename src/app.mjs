@@ -1,5 +1,5 @@
 import { createBlankDataset, createDemoDataset, getDomains, domainLabel, makeId, localDateString, validateDataset } from './model.mjs';
-import { renderDailyChart, renderTrendChart } from './charts.mjs?v=callouts-20260923';
+import { renderDailyChart, renderTrendChart } from './charts.mjs?v=plain-copy-20260923';
 
 const $ = id => document.getElementById(id);
 const DEFAULT_TRACKERS = ['attention_focus', 'energy', 'sedation_fatigue', 'anxiety_distress', 'appetite_impact'];
@@ -53,7 +53,7 @@ function render() {
   $('demo-banner').hidden = !isDemo;
   $('start-journal').textContent = temporaryJournal ? 'Return to session →' : 'Start a blank session →';
   $('profile-alias').textContent = isDemo ? 'Sample journal' : 'Temporary session';
-  $('storage-status').textContent = 'Session only · nothing saved';
+  $('storage-status').textContent = 'Entries are not saved';
   $('footer-mode').textContent = 'Entries disappear on refresh';
   $('day-label').textContent = dateLabel(selectedDate, {weekday:'long',year:'numeric'});
   const observations = dataset.observations.filter(o=>o.date===selectedDate);
@@ -88,7 +88,7 @@ function renderToggles(targetId) {
     const swatch = node('span','swatch'); swatch.style.backgroundColor=d.color;
     label.append(checkbox,swatch,document.createTextNode(d.label)); target.append(label);
   }
-  if (!trackedIds.length) target.append(node('p','chart-note','Choose variables in Journal settings to start tracking.'));
+  if (!trackedIds.length) target.append(node('p','chart-note','Select variables in Journal settings.'));
 }
 function renderHours(observations) {
   const filled = new Set(observations.map(o=>Number(o.time.slice(0,2)))); $('hour-strip').replaceChildren();
@@ -105,9 +105,9 @@ function ratingControl(d, map, prefix) {
   const top=node('div','rating-top'); const label=node('label'); label.htmlFor=`${prefix}-${d.id}`;
   const swatch=node('span','swatch'); swatch.style.backgroundColor=d.color; label.append(swatch,document.createTextNode(d.label));
   const output=node('output'); output.htmlFor=`${prefix}-${d.id}`; output.value=map.has(d.id)?String(map.get(d.id)):'—';
-  const range=node('input'); range.type='range'; range.id=`${prefix}-${d.id}`; range.min='1';range.max='10';range.step='1';range.value=String(map.get(d.id)??5);range.setAttribute('aria-valuetext',map.has(d.id)?`${range.value} of 10`:'Not rated yet. Adjust to choose a rating.');
-  const tools=node('div','rating-tools');const clear=node('button','clear-rating','Reset');clear.type='button';clear.setAttribute('aria-label',`Clear ${d.label} rating`);clear.hidden=!map.has(d.id);
-  clear.addEventListener('click',()=>{map.delete(d.id);output.value='—';range.value='5';item.classList.add('unrated');clear.hidden=true;range.setAttribute('aria-valuetext','Not rated yet. Adjust to choose a rating.');});
+  const range=node('input'); range.type='range'; range.id=`${prefix}-${d.id}`; range.min='1';range.max='10';range.step='1';range.value=String(map.get(d.id)??5);range.setAttribute('aria-valuetext',map.has(d.id)?`${range.value} of 10`:'Not rated. Adjust the slider to select a score.');
+  const tools=node('div','rating-tools');const clear=node('button','clear-rating','Clear');clear.type='button';clear.setAttribute('aria-label',`Clear ${d.label} rating`);clear.hidden=!map.has(d.id);
+  clear.addEventListener('click',()=>{map.delete(d.id);output.value='—';range.value='5';item.classList.add('unrated');clear.hidden=true;range.setAttribute('aria-valuetext','Not rated. Adjust the slider to select a score.');});
   const setRating=()=>{map.set(d.id,Number(range.value));output.value=range.value;item.classList.remove('unrated');clear.hidden=false;range.setAttribute('aria-valuetext',`${range.value} of 10`);};
   range.addEventListener('input',setRating);range.addEventListener('change',setRating);
   // A click on the current thumb is still an explicit choice of that rating.
@@ -180,7 +180,7 @@ $('quick-form').addEventListener('submit',event=>{
   event.preventDefault();$('quick-error').textContent='';
   if(!quickValues.size){$('quick-error').textContent='Choose a rating for at least one variable.';return;}
   const values={date:selectedDate,time:$('quick-time').value,reporter:'Patient',context:$('quick-context').value,note:$('quick-note').value.trim()};
-  if(transact(next=>addObservations(next,quickValues,values))){quickValues.clear();$('quick-note').value='';renderQuickRatings();toast(isDemo?'Sample check-in added to this session.':'Check-in added for this session.');}
+  if(transact(next=>addObservations(next,quickValues,values))){quickValues.clear();$('quick-note').value='';renderQuickRatings();toast(isDemo?'Sample check-in added.':'Check-in added.');}
 });
 $('entry-form').addEventListener('submit',event=>{
   event.preventDefault();$('entry-error').textContent='';const type=$('entry-type').value;const id=$('entry-id').value;
@@ -190,19 +190,19 @@ $('entry-form').addEventListener('submit',event=>{
     const record={id:id||makeId('medication'),date,time,note,medication:$('medication-name').value.trim(),formulation:$('medication-formulation').value.trim(),doseText:$('medication-dose').value.trim(),status:$('medication-status').value};
     if(id)next.medicationEvents=next.medicationEvents.map(e=>e.id===id?record:e);else next.medicationEvents.push(record);
   }else{
-    if(!entryValues.size){$('entry-error').textContent='Choose at least one rating to save.';return;}
+    if(!entryValues.size){$('entry-error').textContent='Select at least one rating.';return;}
     const common={date,time,note,reporter:$('entry-reporter').value,context:$('entry-context').value,link:$('entry-link').value};
     if(id){const [domain,score]=[...entryValues][0];next.observations=next.observations.map(o=>o.id===id?{...o,date,time,note,reporter:common.reporter,context:common.context,medicationEventId:common.link,domain,score}:o);}
     else addObservations(next,entryValues,common);
   }
   const errors=validateDataset(next);if(errors.length){$('entry-error').textContent=errors[0];return;}
   const previousDate=selectedDate;selectedDate=date;
-  if(commit(next)){$('journal-date').value=selectedDate;if(entryFromQuick||previousDate!==date){clearQuickDraft();renderQuickRatings();}$('entry-dialog').close();toast(id?'Entry updated.':type==='medication'?'Medication event added for this session.':'Check-in added for this session.');}
+  if(commit(next)){$('journal-date').value=selectedDate;if(entryFromQuick||previousDate!==date){clearQuickDraft();renderQuickRatings();}$('entry-dialog').close();toast(id?'Entry updated.':type==='medication'?'Medication event added.':'Check-in added.');}
   else {selectedDate=previousDate;$('entry-error').textContent='Could not add this entry. Check the fields and try again.';}
 });
 
 function renderSettings() {
-  renderCatalog();$('explore-demo').textContent=isDemo&&temporaryJournal?'Return to session':'Explore sample journal';
+  renderCatalog();$('explore-demo').textContent=isDemo&&temporaryJournal?'Return to session':'Open sample journal';
 }
 function renderCatalog() {
   const search=$('tracker-search').value.trim().toLocaleLowerCase();const list=domains().filter(d=>`${d.label} ${d.group}`.toLocaleLowerCase().includes(search));
@@ -216,7 +216,7 @@ function renderCatalog() {
     }
     $('tracker-catalog').append(section);
   }
-  if(!list.length)$('tracker-catalog').append(node('p','empty-state','No matching variables. You can add a custom variable.'));
+  if(!list.length)$('tracker-catalog').append(node('p','empty-state','No matching variables. Select Custom variable to add one.'));
 }
 $('custom-form').addEventListener('submit',event=>{
   event.preventDefault();const label=$('custom-label').value.trim();const low=$('custom-low').value.trim();const high=$('custom-high').value.trim();
@@ -249,20 +249,20 @@ function startJournal() {
   if(isDemo&&temporaryJournal){
     dataset=temporaryJournal; isDemo=false; clearQuickDraft();
     if(temporaryPreferences){ trackedIds=[...temporaryPreferences.tracked]; visibleIds=new Set(temporaryPreferences.visible); }
-    render(); toast('Your temporary session is open.'); return;
+    render(); toast('Session restored.'); return;
   }
   const next=createBlankDataset(); next.patient.alias='Temporary session'; next.episode.label='ADHD symptom journal';
-  if(commit(next,{start:true})){resetChoices();clearQuickDraft();changeDate(localDateString());toast('Blank session ready. Entries disappear when you refresh or close this page.');}
+  if(commit(next,{start:true})){resetChoices();clearQuickDraft();changeDate(localDateString());toast('Blank session started.');}
 }
 function toggleDemo() {
   if(isDemo&&temporaryJournal){startJournal();return;}
   if(!isDemo){
     temporaryJournal=dataset; temporaryPreferences={tracked:[...trackedIds],visible:[...visibleIds]};
-    dataset=createDemoDataset();isDemo=true;resetChoices();clearQuickDraft();selectedDate=localDateString();$('journal-date').value=selectedDate;setView('journal');toast('Fictional sample opened. Your temporary session is kept only until you leave.');
+    dataset=createDemoDataset();isDemo=true;resetChoices();clearQuickDraft();selectedDate=localDateString();$('journal-date').value=selectedDate;setView('journal');toast('Sample journal opened. Select “Return to session” to reopen the current entries.');
   } else setView('journal');
 }
 $('clear-journal').addEventListener('click',()=>{
-  discardSession();toast('Session cleared. Nothing has been saved.');
+  discardSession();toast('Session cleared.');
 });
 $('review-start').addEventListener('change',renderReview);$('review-end').addEventListener('change',renderReview);
 $('tracker-search').addEventListener('input',renderCatalog);
