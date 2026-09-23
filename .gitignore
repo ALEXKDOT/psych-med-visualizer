@@ -1,0 +1,16 @@
+# Generated output and dependencies
+/dist/
+/node_modules/
+/coverage/
+*.log
+.DS_Store
+
+# Local configuration and private journal exports
+.env
+.env.*
+!.env.example
+/backups/
+/exports/
+responsemap-*.json
+responsemap-*.csv
+responsemap-*.pdf
