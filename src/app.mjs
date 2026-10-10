@@ -2,8 +2,8 @@ import {
   createBlankDataset, createDemoDataset, getDomains, domainLabel, makeId, localDateString,
   validateDataset, getCheckIns, saveCheckIn, deleteCheckIn, removeMedicationEvent,
   resolveCheckInTime, reviewCoverage, localDateTime
-} from './model.mjs';
-import { renderDailyChart, renderTrendChart } from './charts.mjs?v=journal-20261010';
+} from './model.mjs?v=sample-day-20261010';
+import { renderDailyChart, renderTrendChart } from './charts.mjs?v=sample-day-20261010';
 
 const $ = id => document.getElementById(id);
 const DEFAULT_TRACKERS = ['attention_focus', 'task_initiation', 'energy', 'sedation_fatigue', 'anxiety_distress'];

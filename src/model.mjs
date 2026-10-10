@@ -418,16 +418,26 @@ export function createDemoDataset(now = new Date()) {
   dataset.patient = { alias: "Sample journal", ageBand: "adult" };
   dataset.episode = { ...dataset.episode, id: "episode_demo", label: "A week of fictional observations", startDate: recentDate(-6, now) };
   dataset.visitPlanning = { concerns: "Getting started on tasks", goals: "Begin one planned task in the morning.", questions: "What context would be useful to track before our next visit?" };
-  const schedule = [["08:20", "13:45", "19:10"], ["10:05", "16:30"], [], ["09:15", "11:00", "18:20"], ["14:40"], ["08:50", "12:10", "20:15"], ["09:10", "14:25", "19:30"]];
+  // Today's fictional day is complete even when the demo is opened before morning.
+  // Historical days retain sparse coverage so the review still demonstrates gaps.
+  const sampleTimes = ["07:30", "09:10", "11:20", "13:30", "15:40", "17:50", "20:15", "22:00"];
+  const sampleRatings = {
+    attention_focus: [3, 5, 7, 6, 5, 6, 4, 3],
+    task_initiation: [7, 5, 4, 5, 6, 4, 6, 7],
+    energy: [4, 6, 7, 6, 5, 5, 4, 2],
+    sedation_fatigue: [6, 4, 3, 4, 5, 5, 6, 8],
+    anxiety_distress: [3, 4, 3, 5, 4, 3, 3, 2]
+  };
+  const sampleNotes = { 0: "A slow start to the morning.", 2: "Started the task after moving to a quiet room.", 4: "A noisy meeting made it harder to stay on task.", 7: "Evening tasks took more effort." };
+  const schedule = [["08:20", "13:45", "19:10"], ["10:05", "16:30"], [], ["09:15", "11:00", "18:20"], ["14:40"], ["08:50", "12:10", "20:15"], sampleTimes];
   schedule.forEach((times, day) => {
     if (!times.length) return;
     const date = recentDate(day - 6, now);
-    if (day !== 6 || now.toTimeString().slice(0, 5) >= "08:00") dataset.medicationEvents.push({ id: `demo_event_${day}`, date, time: "08:00", medication: "Example medication", formulation: "Extended-release tablet", doseText: "recorded dose", status: day === 4 ? "unknown" : "taken", note: "Fictional sample event." });
+    dataset.medicationEvents.push({ id: `demo_event_${day}`, date, time: "08:00", medication: "Example medication", formulation: "Extended-release tablet", doseText: "recorded dose", status: day === 4 ? "unknown" : "taken", note: "Fictional sample event." });
     times.forEach((time, i) => {
-      if (day === 6 && time > now.toTimeString().slice(0, 5)) return;
-      const values = new Map([["attention_focus", 3 + (day + i * 2) % 6], ["task_initiation", 2 + (day * 3 + i) % 7]]);
-      if (i === 1) values.set("energy", 4 + day % 4);
-      saveCheckIn(dataset, values, { date, time, reporter: day === 3 && i === 2 ? "Caregiver" : "Patient", context: i === 0 ? "Home" : "Work", note: day === 5 && i === 1 ? "Started the task after moving to a quiet room." : "", pinned: day === 5 && i === 1, sleepHours: i === 0 ? 6.5 + day % 3 * .5 : null, sleepQuality: i === 0 ? "Fair" : "", circumstances: day === 4 ? "Changed routine today" : "" }, `demo_checkin_${day}_${i}`);
+      const values = day === 6 ? new Map(Object.entries(sampleRatings).map(([domain, scores]) => [domain, scores[i]])) : new Map([["attention_focus", 3 + (day + i * 2) % 6], ["task_initiation", 2 + (day * 3 + i) % 7]]);
+      if (day !== 6 && i === 1) values.set("energy", 4 + day % 4);
+      saveCheckIn(dataset, values, { date, time, reporter: day === 3 && i === 2 ? "Caregiver" : "Patient", context: day === 6 ? (time >= "09:00" && time < "18:00" ? "Work" : "Home") : i === 0 ? "Home" : "Work", note: day === 6 ? sampleNotes[i] || "" : day === 5 && i === 1 ? "Started the task after moving to a quiet room." : "", pinned: (day === 5 && i === 1) || (day === 6 && i === 2), sleepHours: i === 0 ? 6.5 + day % 3 * .5 : null, sleepQuality: i === 0 ? "Fair" : "", circumstances: day === 4 ? "Changed routine today" : "" }, `demo_checkin_${day}_${i}`);
     });
   });
   return dataset;

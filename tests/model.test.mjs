@@ -33,9 +33,9 @@ test("blank and synthetic journals validate with sparse fictional coverage and a
   assert.deepEqual(validateDataset(demo), []);
   assert.equal(recordDates(demo).length, 6);
   assert.equal(recordDates(demo).at(-1), "2026-09-23");
-  assert.equal(new Set(demo.observations.map((item) => item.domain)).size, 3);
+  assert.equal(new Set(demo.observations.map((item) => item.domain)).size, 5);
   assert.equal(new Set(demo.observations.map((item) => item.id)).size, demo.observations.length);
-  assert.ok(demo.observations.every((item) => item.date !== localDateString(now) || item.time <= "17:25"));
+  assert.ok(demo.observations.some((item) => item.date === localDateString(now) && item.time === "22:00"));
   assert.ok(demo.medicationEvents.every((item) => item.medication === "Example medication"));
 });
 

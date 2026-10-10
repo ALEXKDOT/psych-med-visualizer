@@ -4,7 +4,7 @@ Verified on October 10, 2026, with fictional data only.
 
 ## Automated checks
 
-`npm test`, `npm run check`, and `npm run build` pass. The 49 tests cover existing calculations, validation, compatibility and privacy safeguards, plus:
+`npm test`, `npm run check`, and `npm run build` pass. The 50 tests cover existing calculations, validation, compatibility and privacy safeguards, plus:
 
 - Separate submissions at identical timestamps retain distinct check-in IDs.
 - Group edits preserve rating identities and shared metadata; cleared ratings are removed.
@@ -12,7 +12,7 @@ Verified on October 10, 2026, with fictional data only.
 - Removing a medication event preserves check-ins and clears both group/rating links.
 - “Now” uses recording time across midnight, while explicit times remain unchanged.
 - Invalid memberships, duplicate ratings, conflicting metadata and empty entries are rejected.
-- Sample observations are sparse, include missing days, and never occur in the future.
+- The opening demo includes eight check-ins from 07:30 to 22:00 for the current date, at every launch hour. These fictional entries intentionally include the complete day even when opened before morning. Historical days retain sparse coverage and gaps. A blank session has no entries.
 - Every built-in chart stroke exceeds 3:1 contrast on the ivory plot background.
 
 ## Browser interaction checks

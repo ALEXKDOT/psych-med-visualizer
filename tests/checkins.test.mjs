@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBlankDataset, createDemoDataset, saveCheckIn, getCheckIns, deleteCheckIn, removeMedicationEvent, resolveCheckInTime, reviewCoverage, validateDataset } from '../src/model.mjs';
+import { createBlankDataset, createDemoDataset, saveCheckIn, getCheckIns, deleteCheckIn, removeMedicationEvent, resolveCheckInTime, reviewCoverage, validateDataset, localDateString } from '../src/model.mjs';
 import { darkenColor } from '../src/charts.mjs';
 import { DOMAINS } from '../src/model.mjs';
 const details = { date: '2026-10-10', time: '09:15', reporter: 'Patient', context: 'Work', note: '', sleepHours: null };
@@ -78,12 +78,12 @@ test('group validation rejects broken membership, repeated domains, inconsistent
   ]) { const copy = structuredClone(data); mutate(copy); assert.ok(validateDataset(copy).length); }
 });
 
-test('sample demonstrates irregular sparse entries, a missed day, optional ratings and no future records', () => {
+test('sample history demonstrates irregular sparse entries, a missed day and optional ratings', () => {
   const now = new Date(2026, 9, 10, 6, 15), data = createDemoDataset(now);
   assert.deepEqual(validateDataset(data), []);
-  assert.ok(data.checkIns.length < 20);
-  assert.ok(data.checkIns.every(c => c.date < '2026-10-10'));
-  assert.ok(data.medicationEvents.every(e => e.date < '2026-10-10'));
+  const history = data.checkIns.filter(c => c.date < '2026-10-10');
+  assert.ok(history.length > 0 && history.length < 20);
+  assert.ok(getCheckIns(data).some(c => c.date < '2026-10-10' && c.ratings.length === 2));
   assert.ok(data.checkIns.some(c => c.pinned && c.note));
   assert.ok(reviewCoverage(data, '2026-10-04', '2026-10-10').missing >= 1);
 });
@@ -92,4 +92,25 @@ test('every built-in chart stroke exceeds 3:1 contrast on the plot background', 
   const luminance = hex => hex.slice(1).match(/../g).map(x => parseInt(x, 16) / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4).reduce((sum, x, i) => sum + x * [.2126, .7152, .0722][i], 0);
   const paper = luminance('#fbf8ef');
   for (const domain of DOMAINS) assert.ok((paper + .05) / (luminance(darkenColor(domain.color)) + .05) >= 3, domain.label);
+});
+
+
+test('opening the demo at any hour provides a complete current day; blank sessions remain empty', () => {
+  for (let hour = 0; hour < 24; hour++) {
+    const now = new Date(2026, 9, 10, hour, 0);
+    const data = createDemoDataset(now);
+    const today = localDateString(now);
+    const checkIns = getCheckIns(data).filter(c => c.date === today);
+    assert.equal(checkIns.length, 8, `Full sample day at ${hour}:00`);
+    assert.equal(checkIns[0].time, '07:30');
+    assert.equal(checkIns.at(-1).time, '22:00');
+    assert.ok(checkIns.every(c => c.ratings.length === 5));
+    assert.ok(checkIns.some(c => c.note && c.pinned));
+    assert.ok(data.medicationEvents.some(e => e.date === today));
+    assert.deepEqual(validateDataset(data), []);
+  }
+  const blank = createBlankDataset();
+  assert.deepEqual(blank.checkIns, []);
+  assert.deepEqual(blank.observations, []);
+  assert.deepEqual(blank.medicationEvents, []);
 });
