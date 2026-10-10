@@ -2,12 +2,12 @@ import {
   createBlankDataset, createDemoDataset, getDomains, domainLabel, makeId, localDateString,
   validateDataset, getCheckIns, saveCheckIn, deleteCheckIn, removeMedicationEvent,
   resolveCheckInTime, reviewCoverage, localDateTime
-} from './model.mjs?v=sample-day-20261010';
-import { renderDailyChart, renderTrendChart } from './charts.mjs?v=sample-day-20261010';
+} from './model.mjs?v=five-symptoms-20261010';
+import { renderDailyChart, renderTrendChart, darkenColor } from './charts.mjs?v=five-symptoms-20261010';
 
 const $ = id => document.getElementById(id);
 const DEFAULT_TRACKERS = ['attention_focus', 'task_initiation', 'energy', 'sedation_fatigue', 'anxiety_distress'];
-const makeSession = data => ({ data, tracked: [...DEFAULT_TRACKERS], quick: ['attention_focus', 'task_initiation'], visible: new Set(['attention_focus']), drafts: new Map(), date: localDateString() });
+const makeSession = data => ({ data, tracked: [...DEFAULT_TRACKERS], quick: [...DEFAULT_TRACKERS], visible: new Set(DEFAULT_TRACKERS), drafts: new Map(), date: localDateString() });
 let sample = makeSession(createDemoDataset());
 let blank = null;
 let session = sample;
@@ -146,7 +146,7 @@ function renderChartControls() {
   const selected = session.tracked.filter(id => session.visible.has(id));
   const value = selected[0] || session.tracked[0] || '';
   if (!selected.length && value) session.visible.add(value);
-  setOptions($('primary-variable'), trackedDomains().map(d => [d.label, d.id]), value);
+  setOptions($('primary-variable'), [['Compare variables', 'comparison'], ...trackedDomains().map(d => [d.label, d.id])], session.visible.size > 1 ? 'comparison' : value);
   renderToggles('variable-toggles'); renderToggles('trend-toggles');
 }
 function renderToggles(targetId) {
@@ -159,10 +159,11 @@ function renderToggles(targetId) {
       input.checked ? session.visible.add(d.id) : session.visible.delete(d.id);
       // Keep both sets of existing controls in place so keyboard focus survives.
       for (const checkbox of document.querySelectorAll('.variable-toggles input')) checkbox.checked = session.visible.has(checkbox.dataset.domain);
-      $('primary-variable').value = session.tracked.find(id => session.visible.has(id)) || '';
+      $('primary-variable').value = session.visible.size > 1 ? 'comparison' : session.tracked.find(id => session.visible.has(id)) || '';
       renderDaily(); if (currentView === 'trends') renderReview();
     });
-    label.append(input, document.createTextNode(d.label)); target.append(label);
+    const swatch = node('span', 'chart-key'); swatch.setAttribute('aria-hidden', 'true'); swatch.style.backgroundColor = darkenColor(d.color);
+    label.append(input, swatch, document.createTextNode(d.label)); target.append(label);
   }
 }
 function renderDaily() {
@@ -326,22 +327,22 @@ function renderSettings() {
 }
 function renderQuickPreferences() {
   $('quick-preferences').replaceChildren();
-  for (let index = 0; index < 3; index++) {
-    const label = node('label', '', index === 2 ? 'Third variable (optional)' : `Favorite ${index + 1}`);
+  for (let index = 0; index < DEFAULT_TRACKERS.length; index++) {
+    const label = node('label', '', `Variable ${index + 1}${index >= 2 ? ' (optional)' : ''}`);
     const select = node('select'); select.id = `quick-favorite-${index}`;
-    setOptions(select, [...(index === 2 ? [['None', '']] : []), ...domains().map(d => [d.label, d.id])], session.quick[index] || '');
+    setOptions(select, [...(index >= 2 ? [['None', '']] : []), ...domains().map(d => [d.label, d.id])], session.quick[index] || '');
     select.addEventListener('change', () => {
       const previous = session.quick[index] || '';
       const chosen = select.value;
-      const other = session.quick.findIndex((id, i) => i !== index && id === chosen);
+      const other = chosen ? session.quick.findIndex((id, i) => i !== index && id === chosen) : -1;
       if (other >= 0) {
         // Swapping populated slots makes reordering direct and keeps favorites unique.
-        if (!previous && other < 2) { $('preferences-error').textContent = 'That variable is already a favorite. Choose another for the optional third slot.'; select.value = ''; return; }
+        if (!previous && other < 2) { $('preferences-error').textContent = 'That variable is already a favorite. Choose another variable for this slot.'; select.value = ''; return; }
         $(`quick-favorite-${other}`).value = previous;
       }
-      const ids = [0, 1, 2].map(i => $(`quick-favorite-${i}`).value).filter(Boolean);
+      const ids = DEFAULT_TRACKERS.map((_, i) => $(`quick-favorite-${i}`).value);
       $('preferences-error').textContent = ''; session.quick = ids;
-      for (const id of ids) if (!session.tracked.includes(id)) session.tracked.push(id);
+      for (const id of ids.filter(Boolean)) if (!session.tracked.includes(id)) session.tracked.push(id);
       renderQuick(); renderChartControls(); renderCatalog();
     }); label.append(select); $('quick-preferences').append(label);
   }
@@ -430,7 +431,7 @@ function moveDate(offset) { const date = new Date(`${session.date}T12:00:00`); d
 for (const key of ['concerns', 'goals', 'questions']) $('visit-' + key).addEventListener('input', () => { session.data.visitPlanning ||= { concerns: '', goals: '', questions: '' }; session.data.visitPlanning[key] = $('visit-' + key).value; session.data.updatedAt = new Date().toISOString(); });
 for (const id of ['review-start', 'review-end', 'review-reporter', 'review-context']) $(id).addEventListener('change', renderReview);
 for (const id of ['show-medication', 'chart-range', 'chart-layout']) $(id).addEventListener('change', renderDaily);
-$('primary-variable').addEventListener('change', () => { session.visible = new Set([$('primary-variable').value]); renderToggles('variable-toggles'); renderToggles('trend-toggles'); renderDaily(); });
+$('primary-variable').addEventListener('change', () => { session.visible = new Set($('primary-variable').value === 'comparison' ? session.tracked : [$('primary-variable').value]); renderToggles('variable-toggles'); renderToggles('trend-toggles'); renderDaily(); });
 $('tracker-search').addEventListener('input', renderCatalog);
 $('start-journal').addEventListener('click', () => { blank ||= makeSession(createBlankDataset()); session = blank; setView('journal'); toast('Blank demo opened. Entries last only while this page is open.'); });
 $('explore-demo').addEventListener('click', () => { session = session === sample && blank ? blank : sample; setView('journal'); });

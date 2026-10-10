@@ -12,7 +12,7 @@ Verified on October 10, 2026, with fictional data only.
 - Removing a medication event preserves check-ins and clears both group/rating links.
 - “Now” uses recording time across midnight, while explicit times remain unchanged.
 - Invalid memberships, duplicate ratings, conflicting metadata and empty entries are rejected.
-- The opening demo includes eight check-ins from 07:30 to 22:00 for the current date, at every launch hour. These fictional entries intentionally include the complete day even when opened before morning. Historical days retain sparse coverage and gaps. A blank session has no entries.
+- The opening demo includes eight check-ins from 07:30 to 22:00 for the current date, at every launch hour. These fictional entries intentionally include the complete day even when opened before morning. Every current and historical sample check-in includes all five default variables. Historical days retain sparse timing and gaps. A blank session has no entries.
 - Every built-in chart stroke exceeds 3:1 contrast on the ivory plot background.
 
 ## Browser interaction checks
@@ -25,7 +25,8 @@ Checked the running app in the Codex browser at desktop width and 390- and 320-p
 - Closing and reopening the medication form restores its draft.
 - A note-only entry can be recorded and pinned; the visit summary counts it as a check-in and does not fabricate ratings.
 - Editing a multi-rating check-in updates the shared note and selected rating together.
-- Quick favorite choices appear in their configured order.
+- All five default variables appear in the main check-in form and initial overlaid chart, with all chart checkboxes visible and selected.
+- Five quick-variable settings preserve their configured order, including empty optional slots.
 - Toggling a comparison by keyboard keeps focus on the existing checkbox.
 - Arrow keys navigate chart points, Enter pins details, and each panel has one chart tab stop.
 - Reporter filtering changes check-in coverage and calculated summaries while retaining the period's medication-event history.

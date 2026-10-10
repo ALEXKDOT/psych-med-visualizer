@@ -1,4 +1,4 @@
-import { getDomains } from "./model.mjs?v=sample-day-20261010";
+import { getDomains } from "./model.mjs?v=five-symptoms-20261010";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const DAY_MS = 86_400_000;

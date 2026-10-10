@@ -78,12 +78,13 @@ test('group validation rejects broken membership, repeated domains, inconsistent
   ]) { const copy = structuredClone(data); mutate(copy); assert.ok(validateDataset(copy).length); }
 });
 
-test('sample history demonstrates irregular sparse entries, a missed day and optional ratings', () => {
+test('sample history demonstrates sparse timing, a missed day and five ratings per check-in', () => {
   const now = new Date(2026, 9, 10, 6, 15), data = createDemoDataset(now);
   assert.deepEqual(validateDataset(data), []);
   const history = data.checkIns.filter(c => c.date < '2026-10-10');
   assert.ok(history.length > 0 && history.length < 20);
-  assert.ok(getCheckIns(data).some(c => c.date < '2026-10-10' && c.ratings.length === 2));
+  const expected = ['attention_focus', 'task_initiation', 'energy', 'sedation_fatigue', 'anxiety_distress'].sort();
+  for (const checkIn of getCheckIns(data)) assert.deepEqual(checkIn.ratings.map(r => r.domain).sort(), expected);
   assert.ok(data.checkIns.some(c => c.pinned && c.note));
   assert.ok(reviewCoverage(data, '2026-10-04', '2026-10-10').missing >= 1);
 });

@@ -8,7 +8,7 @@ An interactive ADHD symptom and medication journal for patients and conversation
 
 Version 1.2 keeps entries only in the open page's memory. It does not save journal entries, medication events, notes, custom variables, or chart preferences to browser storage or a server. Reloading or closing the page ends the session, and returning through browser history starts fresh. This is a temporary workspace, not a retained medical record.
 
-Start with a complete fictional day (morning through evening), plus sparse historical days or choose “Try a blank demo.” Drafts survive navigation within the open page, but end with the session. There are no accounts, patient profile fields, uploads, downloads, saved backups, or provider sharing. Avoid names, contact details, record numbers, or other identifying information in free-text fields. Anything typed is visible to people with access to the open page.
+Start with a complete fictional day (morning through evening), plus sparse historical days. Every sample check-in contains all five default ratings. Choose “Try a blank demo” to start with an empty day. Drafts survive navigation within the open page, but end with the session. There are no accounts, patient profile fields, uploads, downloads, saved backups, or provider sharing. Avoid names, contact details, record numbers, or other identifying information in free-text fields. Anything typed is visible to people with access to the open page.
 
 The app has no analytics, external fonts, third-party scripts, cloud database, or data API. Its Content Security Policy blocks outgoing data connections and form submissions. GitHub receives ordinary requests for the static application files and may retain hosting information such as IP addresses; the app does not include journal contents in those requests. This is not a claim that the host receives no visitor information.
 
@@ -16,13 +16,13 @@ Older versions saved journals in browser storage. This version does not read, mi
 
 ## What it does
 
-- A capture-first daily screen with two quick favorites (Focus and Difficulty starting tasks), an optional third, and a clear “Check in now” action. Favorites can be chosen and reordered in settings independently of chart selection.
+- A capture-first daily screen with five visible default variables (Focus, Difficulty starting tasks, Energy, Fatigue, and Anxiety), and a clear “Check in now” action. All five appear directly in the main check-in form. Their order and selection can be changed in settings independently of chart selection.
 - Explicit 1–10 choices start “Not rated.” Every rating can be cleared, and a note can be recorded without a numerical rating. Keyboard users can move among rating choices with arrow keys.
 - “Now” resolves when recording begins, including after an idle page or midnight. “Earlier / specific time” retains the chosen time. Drafts are kept per date in memory, including expanded check-ins and medication forms, with explicit discard controls.
 - Each check-in has its own stored identifier, grouped ratings, a shared note, reporter, context, optional sleep duration/quality and daily circumstances. Editing or deleting a check-in operates on the group. Identical timestamps never merge separate submissions.
 - A searchable catalog of 42 variables and custom variables with named scale endpoints. Optional hourly tracking is collapsed until needed.
 - Distinct medication events with name, formulation, dose text, local time and taken, missed, partial, or unknown status. Links from check-ins to medication events remain an explicit choice.
-- Responsive daily charts default to Focus, offer “Compare another,” separate aligned charts or an overlay, and full-day/morning/afternoon/evening ranges. A labeled medication lane, scale meanings, counts, dark strokes and varied point shapes help interpretation.
+- Responsive daily charts open with all five default variables overlaid, offer visible chart-variable controls, separate aligned charts, and full-day/morning/afternoon/evening ranges. A labeled medication lane, scale meanings, counts, dark strokes and varied point shapes help interpretation.
 - Charts have one keyboard entry point per panel, arrow-key navigation, and tap/Enter to pin details. Missing hours and days remain missing.
 - A visit summary with period coverage, concerns, functional goals, pinned observations, appointment questions, filtered descriptive averages and medication history. Individual grouped records are expandable, and each recorded day links back to within-day patterns. Reporter/context filters apply to check-ins, while medication history retains all events in the period.
 

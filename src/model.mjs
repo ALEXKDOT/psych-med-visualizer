@@ -435,8 +435,13 @@ export function createDemoDataset(now = new Date()) {
     const date = recentDate(day - 6, now);
     dataset.medicationEvents.push({ id: `demo_event_${day}`, date, time: "08:00", medication: "Example medication", formulation: "Extended-release tablet", doseText: "recorded dose", status: day === 4 ? "unknown" : "taken", note: "Fictional sample event." });
     times.forEach((time, i) => {
-      const values = day === 6 ? new Map(Object.entries(sampleRatings).map(([domain, scores]) => [domain, scores[i]])) : new Map([["attention_focus", 3 + (day + i * 2) % 6], ["task_initiation", 2 + (day * 3 + i) % 7]]);
-      if (day !== 6 && i === 1) values.set("energy", 4 + day % 4);
+      const values = day === 6 ? new Map(Object.entries(sampleRatings).map(([domain, scores]) => [domain, scores[i]])) : new Map([
+        ["attention_focus", 3 + (day + i * 2) % 6],
+        ["task_initiation", 2 + (day * 3 + i) % 7],
+        ["energy", 4 + day % 4],
+        ["sedation_fatigue", 3 + (day + i) % 5],
+        ["anxiety_distress", 2 + (day + i) % 4]
+      ]);
       saveCheckIn(dataset, values, { date, time, reporter: day === 3 && i === 2 ? "Caregiver" : "Patient", context: day === 6 ? (time >= "09:00" && time < "18:00" ? "Work" : "Home") : i === 0 ? "Home" : "Work", note: day === 6 ? sampleNotes[i] || "" : day === 5 && i === 1 ? "Started the task after moving to a quiet room." : "", pinned: (day === 5 && i === 1) || (day === 6 && i === 2), sleepHours: i === 0 ? 6.5 + day % 3 * .5 : null, sleepQuality: i === 0 ? "Fair" : "", circumstances: day === 4 ? "Changed routine today" : "" }, `demo_checkin_${day}_${i}`);
     });
   });
