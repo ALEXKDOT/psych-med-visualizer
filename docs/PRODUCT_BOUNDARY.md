@@ -2,9 +2,9 @@
 
 ## Intended use
 
-ResponseMap 1.1 is a public, temporary ADHD symptom and medication journal for patients and conversations with their providers. It supports frequent manual check-ins, including hourly recording, and interactive comparison of observations within the open session. It deliberately does not retain a medical history after the session ends.
+ResponseMap 1.2 is a public, temporary ADHD symptom and medication journal for patients and conversations with their providers. It supports frequent manual check-ins, including hourly recording, and interactive comparison of observations within the open session. It deliberately does not retain a medical history after the session ends.
 
-One observation is one variable rated at one local date and time by a stated reporter role in a stated context. One check-in can create several observations. Medication events are separate records, each with its own medication, formulation, dose, time, and status. An optional link between an observation and an event is chosen explicitly; proximity does not imply a relationship.
+One observation is one variable rated at one local date and time by a stated reporter role in a stated context. One check-in has a stable identifier and groups its ratings with shared context and notes. A note-only check-in creates no numerical observations. Optional sleep duration, sleep quality and circumstances provide structured context without generating clinical interpretations. Medication events are separate records, each with its own medication, formulation, dose, time, and status. An optional link between an observation and an event is chosen explicitly; proximity does not imply a relationship.
 
 The catalog contains 42 built-in variables and supports custom 1–10 variables with named endpoints. It is a broad starting point, not a validated assessment instrument or an exhaustive catalog of symptoms. Users can track a manageable subset and hide chart variables without deleting entries from the current session.
 
@@ -14,13 +14,13 @@ The catalog contains 42 built-in variables and supports custom 1–10 variables 
 - Unrecorded hours and days remain missing. Missing medication events do not establish that a dose was missed.
 - Daily averages are arithmetic means of available observations for each variable and date. Details include counts and recorded ranges. Recording times, reporter mixes, and contexts can change the average.
 - Scores are whole numbers from 1 to 10, interpreted using each variable's endpoints. High focus and high fatigue have different meanings. Variables are not combined into a total clinical score.
-- Date-range review presents descriptive charts, medication entries, and observations in the current session. There are no in-app export, print, backup, or sharing actions.
+- Date-range review separates user-entered concerns, goals, pinned observations and appointment questions from calculated descriptions, with coverage counts and reporter/context filters. Medication history remains visible for the full selected period. There are no in-app export, print, backup, or sharing actions.
 
 The app does not recommend a medication, dose, formulation, timing, or redosing; diagnose a condition; label treatment as effective; infer medication onset or wear-off; or make an emergency assessment. Temporal proximity and descriptive changes do not establish a medication effect. The app does not monitor for urgent symptoms or replace clinical care.
 
 ## Privacy and session lifetime
 
-Journal entries and preferences exist only in the current page's memory. The public application does not read or write journals using `localStorage`, `sessionStorage`, IndexedDB, cookies, or a remote database. Reloading or closing the page ends the session; browser-history restoration starts a fresh session. There is no recovery or saved history to resume later.
+Journal entries and preferences exist only in the current page's memory. The public application does not read or write journals using `localStorage`, `sessionStorage`, IndexedDB, cookies, or a remote database. Reloading or closing the page ends the session; browser-history restoration starts a fresh session. Drafts survive navigation within the same open session, with explicit discard controls. There is no recovery or saved history after the session ends.
 
 Fictional sample data provides a way to explore the interface. A blank session supports temporary entries. The interface does not collect a patient profile. Free-text entries should not contain names, contact details, medical record numbers, or other identifying information. Someone with access to the open page can see its contents. The application cannot control a user's screenshots, browser features, extensions, or device-level recording.
 

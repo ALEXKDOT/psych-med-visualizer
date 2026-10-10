@@ -6,9 +6,9 @@ An interactive ADHD symptom and medication journal for patients and conversation
 
 ## Session-only privacy
 
-Version 1.1 keeps entries only in the open page's memory. It does not save journal entries, medication events, notes, custom variables, or chart preferences to browser storage or a server. Reloading or closing the page ends the session, and returning through browser history starts fresh. This is a temporary workspace, not a retained medical record.
+Version 1.2 keeps entries only in the open page's memory. It does not save journal entries, medication events, notes, custom variables, or chart preferences to browser storage or a server. Reloading or closing the page ends the session, and returning through browser history starts fresh. This is a temporary workspace, not a retained medical record.
 
-Start with fictional sample data or a blank session. There are no accounts, patient profile fields, uploads, downloads, saved backups, or provider sharing. Avoid names, contact details, record numbers, or other identifying information in free-text fields. Anything typed is visible to people with access to the open page.
+Start with a sparse fictional sample or choose “Try a blank demo.” Drafts survive navigation within the open page, but end with the session. There are no accounts, patient profile fields, uploads, downloads, saved backups, or provider sharing. Avoid names, contact details, record numbers, or other identifying information in free-text fields. Anything typed is visible to people with access to the open page.
 
 The app has no analytics, external fonts, third-party scripts, cloud database, or data API. Its Content Security Policy blocks outgoing data connections and form submissions. GitHub receives ordinary requests for the static application files and may retain hosting information such as IP addresses; the app does not include journal contents in those requests. This is not a claim that the host receives no visitor information.
 
@@ -16,12 +16,16 @@ Older versions saved journals in browser storage. This version does not read, mi
 
 ## What it does
 
-- Manual check-ins at any time, including hourly, with whole-number ratings from 1 to 10. Ratings begin unrated; choose only what you want to record.
-- A searchable catalog of 42 variables covering attention, mood, energy, sleep, appetite, and physical experiences. Add custom variables with descriptions of what 1 and 10 mean.
-- Medication events with medication name, formulation, dose text, local date and time, and taken, missed, partial, or unknown status. Each event can describe a different medication or dose.
-- Daily line charts with independently selectable variables and medication markers. Hover or focus a point for details. Lines connect recorded points up to three hours apart; longer gaps stay open.
-- Editable and deletable entries, reporter roles, context, notes, and optional explicit links between a rating and a medication event.
-- Date-range review of the current session, with daily averages, observation counts, and recorded entries.
+- A capture-first daily screen with two quick favorites (Focus and Difficulty starting tasks), an optional third, and a clear “Check in now” action. Favorites can be chosen and reordered in settings independently of chart selection.
+- Explicit 1–10 choices start “Not rated.” Every rating can be cleared, and a note can be recorded without a numerical rating. Keyboard users can move among rating choices with arrow keys.
+- “Now” resolves when recording begins, including after an idle page or midnight. “Earlier / specific time” retains the chosen time. Drafts are kept per date in memory, including expanded check-ins and medication forms, with explicit discard controls.
+- Each check-in has its own stored identifier, grouped ratings, a shared note, reporter, context, optional sleep duration/quality and daily circumstances. Editing or deleting a check-in operates on the group. Identical timestamps never merge separate submissions.
+- A searchable catalog of 42 variables and custom variables with named scale endpoints. Optional hourly tracking is collapsed until needed.
+- Distinct medication events with name, formulation, dose text, local time and taken, missed, partial, or unknown status. Links from check-ins to medication events remain an explicit choice.
+- Responsive daily charts default to Focus, offer “Compare another,” separate aligned charts or an overlay, and full-day/morning/afternoon/evening ranges. A labeled medication lane, scale meanings, counts, dark strokes and varied point shapes help interpretation.
+- Charts have one keyboard entry point per panel, arrow-key navigation, and tap/Enter to pin details. Missing hours and days remain missing.
+- A visit summary with period coverage, concerns, functional goals, pinned observations, appointment questions, filtered descriptive averages and medication history. Individual grouped records are expandable, and each recorded day links back to within-day patterns. Reporter/context filters apply to check-ins, while medication history retains all events in the period.
+
 
 Hourly recording is manual. The app does not schedule notifications, collect sensor measurements, or contact a provider. Each variable has its own scale: a higher score is not always better. The app organizes observations; it does not diagnose, establish medication effects, or recommend treatment changes.
 
@@ -43,7 +47,7 @@ npm run check
 npm run build
 ```
 
-The tests cover journal validation, calculations, compatibility utilities, and public-app privacy safeguards. Syntax checks cover the application modules and build/server scripts. The build recreates `dist/` from an explicit allowlist of six static assets: `index.html`, `styles.css`, `favicon.svg`, and the three browser modules in `src/`. It excludes the development server, documentation, tests, private configuration, user files, and the unused portability module.
+The tests cover grouped check-ins, note-only coverage, timestamp resolution, sparse sample data, chart contrast, journal validation, calculations, compatibility utilities, and public-app privacy safeguards. See `docs/QA.md` for browser interaction checks and limitations. Syntax checks cover the application modules and build/server scripts. The build recreates `dist/` from an explicit allowlist of six static assets: `index.html`, `styles.css`, `favicon.svg`, and the three browser modules in `src/`. It excludes the development server, documentation, tests, private configuration, user files, and the unused portability module.
 
 GitHub Pages publishes only `dist/`. The [Pages workflow](.github/workflows/pages.yml) runs tests, syntax checks, and the build on each push to `main`, then deploys the generated files. It can also be run manually. In repository **Settings → Pages**, choose **GitHub Actions** as the build source. The deployment uses the `github-pages` environment with narrowly scoped publishing permissions, following [GitHub's custom Pages workflow guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages). The existing CI workflow also checks pull requests.
 

@@ -25,15 +25,15 @@ function errorsAfter(mutator) {
   return validateDataset(dataset).join(" ");
 }
 
-test("blank and synthetic journals validate with a current schema and seven recorded days", () => {
+test("blank and synthetic journals validate with sparse fictional coverage and a missed day", () => {
   assert.equal(SCHEMA_VERSION, "1.0.0");
   assert.deepEqual(validateDataset(createBlankDataset()), []);
   const now = new Date(2026, 8, 23, 17, 25);
   const demo = createDemoDataset(now);
   assert.deepEqual(validateDataset(demo), []);
-  assert.equal(recordDates(demo).length, 7);
+  assert.equal(recordDates(demo).length, 6);
   assert.equal(recordDates(demo).at(-1), "2026-09-23");
-  assert.equal(new Set(demo.observations.map((item) => item.domain)).size, 5);
+  assert.equal(new Set(demo.observations.map((item) => item.domain)).size, 3);
   assert.equal(new Set(demo.observations.map((item) => item.id)).size, demo.observations.length);
   assert.ok(demo.observations.every((item) => item.date !== localDateString(now) || item.time <= "17:25"));
   assert.ok(demo.medicationEvents.every((item) => item.medication === "Example medication"));

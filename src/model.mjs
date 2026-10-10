@@ -140,7 +140,7 @@ export function uniqueDates(observations) {
 }
 
 export function recordDates(dataset) {
-  return [...new Set([...dataset.observations.map((item) => item.date), ...dataset.medicationEvents.map((item) => item.date)])].sort();
+  return [...new Set([...dataset.observations.map((item) => item.date), ...dataset.medicationEvents.map((item) => item.date), ...(dataset.checkIns || []).map((item) => item.date)])].sort();
 }
 
 export function filterObservations(dataset, domainId, dayWindow = "7") {
@@ -251,6 +251,29 @@ function validateDatasetInternal(candidate) {
     if (!["taken", "missed", "partial", "unknown"].includes(item.status)) errors.push(`${label} has an unsupported status.`);
     string(item.note, `${label} note`, 10_000, false);
   }
+  const checkIns = candidate.checkIns === undefined ? [] : candidate.checkIns;
+  if (!Array.isArray(checkIns)) return [...errors, "Check-ins must be an array."];
+  if (checkIns.length > 100_000) return [...errors, "The journal exceeds the supported number of check-ins."];
+  const checkInIds = new Set();
+  for (const item of checkIns) {
+    if (!isRecord(item)) { errors.push("Check-in is not a record object."); continue; }
+    identifier(item.id, "Check-in");
+    if (checkInIds.has(item.id)) errors.push("Check-in duplicates an existing identifier.");
+    checkInIds.add(item.id);
+    dateTime(item, "Check-in");
+    for (const key of ["reporter", "context"]) string(item[key], `Check-in ${key}`, key === "context" ? 300 : 200);
+    string(item.note, "Check-in note", 10_000, false);
+    if (typeof item.pinned !== "boolean") errors.push("Check-in pinned must be a boolean.");
+    if (typeof item.medicationEventId !== "string" || (item.medicationEventId && !eventIds.has(item.medicationEventId))) errors.push("Check-in links to a missing medication event.");
+    if (item.sleepHours !== null && (typeof item.sleepHours !== "number" || !Number.isFinite(item.sleepHours) || item.sleepHours < 0 || item.sleepHours > 24)) errors.push("Sleep duration must be between 0 and 24 hours or unanswered.");
+    if (!["", "Poor", "Fair", "Restful"].includes(item.sleepQuality)) errors.push("Sleep quality is invalid.");
+    string(item.circumstances, "Daily circumstances", 2000, false);
+    if (!item.note?.trim() && !candidate.observations.some(o => o?.checkInId === item.id)) errors.push("A check-in needs a rating or a note.");
+  }
+  if (candidate.visitPlanning !== undefined) {
+    if (!isRecord(candidate.visitPlanning)) errors.push("Visit planning must be a record object.");
+    else for (const key of ["concerns", "goals", "questions"]) string(candidate.visitPlanning[key], `Visit ${key}`, 2000, false);
+  }
   const observationIds = new Set();
   for (const [index, item] of candidate.observations.entries()) {
     const label = `Observation ${index + 1}`;
@@ -258,6 +281,14 @@ function validateDatasetInternal(candidate) {
     identifier(item.id, label);
     if (observationIds.has(item.id)) errors.push(`${label} duplicates an existing identifier.`);
     observationIds.add(item.id);
+    if (item.checkInId !== undefined) {
+      const checkIn = checkIns.find(c => c?.id === item.checkInId);
+      if (!checkIn) errors.push(`${label} links to a missing check-in.`);
+      else for (const key of ["date", "time", "reporter", "context", "note", "medicationEventId"]) {
+        if (item[key] !== checkIn[key]) errors.push(`${label} disagrees with its check-in ${key}.`);
+      }
+      if (candidate.observations.some(o => o !== item && o?.checkInId === item.checkInId && o?.domain === item.domain)) errors.push(`${label} duplicates a variable in its check-in.`);
+    }
     dateTime(item, label);
     if (typeof item.domain !== "string" || !domainIds.has(item.domain)) errors.push(`${label} has an unsupported domain.`);
     if (typeof item.score !== "number" || !Number.isInteger(item.score) || item.score < 1 || item.score > 10) errors.push(`${label} has a score outside 1–10; scores must be whole numbers.`);
@@ -325,37 +356,79 @@ export function createBlankDataset() {
     schemaVersion: SCHEMA_VERSION, createdAt: now, updatedAt: now,
     patient: { alias: "My journal", ageBand: "not_recorded" },
     episode: { id: "episode_current", label: "My medication and symptom journal", medication: "", formulation: "", doseText: "", startDate: localDateString(), context: "" },
-    customDomains: [], medicationEvents: [], observations: []
+    customDomains: [], medicationEvents: [], observations: [], checkIns: [],
+    visitPlanning: { concerns: "", goals: "", questions: "" }
   };
+}
+
+// Ratings keep their individual identities for calculations; the check-in owns shared details.
+export function getCheckIns(dataset) {
+  const groups = (dataset.checkIns || []).map(item => ({ ...item, ratings: dataset.observations.filter(o => o.checkInId === item.id) }));
+  // Older observations cannot be grouped reliably by time alone.
+  for (const item of dataset.observations.filter(o => !o.checkInId)) groups.push({ ...item, ratings: [{ ...item }], legacy: true, pinned: false, sleepHours: null, sleepQuality: "", circumstances: "" });
+  return groups;
+}
+
+export function saveCheckIn(dataset, values, details, existingId = "") {
+  const previous = getCheckIns(dataset).find(c => c.id === existingId);
+  const id = existingId || makeId("checkin");
+  const checkIn = {
+    id, date: details.date, time: details.time, reporter: details.reporter || "Patient",
+    context: details.context || "Home", note: details.note || "", medicationEventId: details.link || "",
+    pinned: details.pinned ?? previous?.pinned ?? false,
+    sleepHours: details.sleepHours ?? null, sleepQuality: details.sleepQuality || "", circumstances: details.circumstances || ""
+  };
+  dataset.checkIns ||= [];
+  dataset.checkIns = dataset.checkIns.filter(c => c.id !== id);
+  dataset.observations = dataset.observations.filter(o => o.checkInId !== id && !(previous?.legacy && o.id === id));
+  dataset.checkIns.push(checkIn);
+  for (const [domain, score] of values) {
+    const old = previous?.ratings.find(o => o.domain === domain);
+    const { pinned, sleepHours, sleepQuality, circumstances, ...shared } = checkIn;
+    dataset.observations.push({ ...shared, id: old?.id || makeId("observation"), checkInId: id, domain, score });
+  }
+  return id;
+}
+
+export function deleteCheckIn(dataset, id) {
+  dataset.checkIns = (dataset.checkIns || []).filter(c => c.id !== id);
+  dataset.observations = dataset.observations.filter(o => o.checkInId !== id && o.id !== id);
+}
+
+export function removeMedicationEvent(dataset, id) {
+  dataset.medicationEvents = dataset.medicationEvents.filter(e => e.id !== id);
+  for (const item of [...dataset.observations, ...(dataset.checkIns || [])]) if (item.medicationEventId === id) item.medicationEventId = "";
+}
+
+export function resolveCheckInTime(draft, now = new Date()) {
+  if (draft.timeMode === "earlier") return { date: draft.date, time: draft.time };
+  return { date: localDateString(now), time: now.toTimeString().slice(0, 5) };
+}
+
+export function reviewCoverage(dataset, startDate, endDate) {
+  const inRange = item => item.date >= startDate && item.date <= endDate;
+  const days = Math.round((Date.parse(endDate + "T12:00:00Z") - Date.parse(startDate + "T12:00:00Z")) / 86400000) + 1;
+  const checkIns = getCheckIns(dataset).filter(inRange);
+  const recorded = new Set(checkIns.map(c => c.date)).size;
+  return { days, recorded, missing: days - recorded, checkIns: checkIns.length, ratings: dataset.observations.filter(inRange).length };
 }
 
 export function createDemoDataset(now = new Date()) {
   const dataset = createBlankDataset();
-  dataset.patient = { alias: "Alex · sample journal", ageBand: "adult" };
-  dataset.episode = { id: "episode_demo", label: "Seven days of fictional observations", medication: "Example medication", formulation: "Extended-release tablet", doseText: "recorded dose", startDate: recentDate(-6, now), context: "Synthetic sample data for exploring the journal. These observations do not predict medication effects." };
-  const patterns = {
-    attention_focus: [4, 4, 5, 7, 8, 7, 6, 7, 6, 5, 5, 4, 3, 4],
-    energy: [4, 5, 6, 7, 7, 6, 5, 6, 6, 5, 4, 4, 3, 3],
-    sedation_fatigue: [5, 4, 3, 3, 2, 3, 4, 3, 4, 4, 5, 6, 6, 7],
-    anxiety_distress: [3, 4, 4, 3, 2, 3, 4, 3, 3, 4, 3, 2, 2, 2],
-    appetite_impact: [2, 2, 3, 4, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1]
-  };
-  for (let day = 0; day < 7; day += 1) {
+  dataset.patient = { alias: "Sample journal", ageBand: "adult" };
+  dataset.episode = { ...dataset.episode, id: "episode_demo", label: "A week of fictional observations", startDate: recentDate(-6, now) };
+  dataset.visitPlanning = { concerns: "Getting started on tasks", goals: "Begin one planned task in the morning.", questions: "What context would be useful to track before our next visit?" };
+  const schedule = [["08:20", "13:45", "19:10"], ["10:05", "16:30"], [], ["09:15", "11:00", "18:20"], ["14:40"], ["08:50", "12:10", "20:15"], ["09:10", "14:25", "19:30"]];
+  schedule.forEach((times, day) => {
+    if (!times.length) return;
     const date = recentDate(day - 6, now);
-    const eventId = `demo_event_${day + 1}`;
-    dataset.medicationEvents.push({ id: eventId, date, time: day === 3 ? "09:00" : "08:00", medication: "Example medication", formulation: "Extended-release tablet", doseText: "recorded dose", status: "taken", note: day === 3 ? "Fictional example: a later start this morning." : "Fictional sample event." });
-    for (let hour = 7; hour <= 20; hour += 1) {
-      // Today's sample never displays check-ins that have not happened yet.
-      if (day === 6 && hour > now.getHours()) continue;
-      for (const [domainId, pattern] of Object.entries(patterns)) {
-        const variation = ((day * 3 + hour + domainId.length) % 5 === 0 ? 1 : 0) - ((day + hour) % 7 === 0 ? 1 : 0);
-        dataset.observations.push({
-          id: `demo_${domainId}_${day + 1}_${hour}`, date, time: `${String(hour).padStart(2, "0")}:00`, domain: domainId,
-          score: Math.min(10, Math.max(1, pattern[hour - 7] + variation)), reporter: "Patient", context: hour >= 9 && hour <= 17 ? "Work" : "Home", medicationEventId: eventId,
-          note: day === 6 && hour === 12 && domainId === "attention_focus" ? "A quiet room helped me finish the task." : ""
-        });
-      }
-    }
-  }
+    if (day !== 6 || now.toTimeString().slice(0, 5) >= "08:00") dataset.medicationEvents.push({ id: `demo_event_${day}`, date, time: "08:00", medication: "Example medication", formulation: "Extended-release tablet", doseText: "recorded dose", status: day === 4 ? "unknown" : "taken", note: "Fictional sample event." });
+    times.forEach((time, i) => {
+      if (day === 6 && time > now.toTimeString().slice(0, 5)) return;
+      const values = new Map([["attention_focus", 3 + (day + i * 2) % 6], ["task_initiation", 2 + (day * 3 + i) % 7]]);
+      if (i === 1) values.set("energy", 4 + day % 4);
+      saveCheckIn(dataset, values, { date, time, reporter: day === 3 && i === 2 ? "Caregiver" : "Patient", context: i === 0 ? "Home" : "Work", note: day === 5 && i === 1 ? "Started the task after moving to a quiet room." : "", pinned: day === 5 && i === 1, sleepHours: i === 0 ? 6.5 + day % 3 * .5 : null, sleepQuality: i === 0 ? "Fair" : "", circumstances: day === 4 ? "Changed routine today" : "" }, `demo_checkin_${day}_${i}`);
+    });
+  });
   return dataset;
 }
