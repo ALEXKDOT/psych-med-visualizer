@@ -25,7 +25,7 @@ Checked the running app in the Codex browser at desktop width and 390- and 320-p
 - Closing and reopening the medication form restores its draft.
 - A note-only entry can be recorded and pinned; the visit summary counts it as a check-in and does not fabricate ratings.
 - Editing a multi-rating check-in updates the shared note and selected rating together.
-- All five default variables appear in the main check-in form and initial overlaid chart, with all chart checkboxes visible and selected.
+- All five default variables appear in the main check-in form and initial overlaid chart, with all chart checkboxes visible and selected. No variable dropdown is shown; checkboxes hide and restore individual series.
 - Five quick-variable settings preserve their configured order, including empty optional slots.
 - Toggling a comparison by keyboard keeps focus on the existing checkbox.
 - Arrow keys navigate chart points, Enter pins details, and each panel has one chart tab stop.

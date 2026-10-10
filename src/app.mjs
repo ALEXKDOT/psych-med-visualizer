@@ -146,7 +146,6 @@ function renderChartControls() {
   const selected = session.tracked.filter(id => session.visible.has(id));
   const value = selected[0] || session.tracked[0] || '';
   if (!selected.length && value) session.visible.add(value);
-  setOptions($('primary-variable'), [['Compare variables', 'comparison'], ...trackedDomains().map(d => [d.label, d.id])], session.visible.size > 1 ? 'comparison' : value);
   renderToggles('variable-toggles'); renderToggles('trend-toggles');
 }
 function renderToggles(targetId) {
@@ -159,7 +158,6 @@ function renderToggles(targetId) {
       input.checked ? session.visible.add(d.id) : session.visible.delete(d.id);
       // Keep both sets of existing controls in place so keyboard focus survives.
       for (const checkbox of document.querySelectorAll('.variable-toggles input')) checkbox.checked = session.visible.has(checkbox.dataset.domain);
-      $('primary-variable').value = session.visible.size > 1 ? 'comparison' : session.tracked.find(id => session.visible.has(id)) || '';
       renderDaily(); if (currentView === 'trends') renderReview();
     });
     const swatch = node('span', 'chart-key'); swatch.setAttribute('aria-hidden', 'true'); swatch.style.backgroundColor = darkenColor(d.color);
@@ -431,7 +429,6 @@ function moveDate(offset) { const date = new Date(`${session.date}T12:00:00`); d
 for (const key of ['concerns', 'goals', 'questions']) $('visit-' + key).addEventListener('input', () => { session.data.visitPlanning ||= { concerns: '', goals: '', questions: '' }; session.data.visitPlanning[key] = $('visit-' + key).value; session.data.updatedAt = new Date().toISOString(); });
 for (const id of ['review-start', 'review-end', 'review-reporter', 'review-context']) $(id).addEventListener('change', renderReview);
 for (const id of ['show-medication', 'chart-range', 'chart-layout']) $(id).addEventListener('change', renderDaily);
-$('primary-variable').addEventListener('change', () => { session.visible = new Set($('primary-variable').value === 'comparison' ? session.tracked : [$('primary-variable').value]); renderToggles('variable-toggles'); renderToggles('trend-toggles'); renderDaily(); });
 $('tracker-search').addEventListener('input', renderCatalog);
 $('start-journal').addEventListener('click', () => { blank ||= makeSession(createBlankDataset()); session = blank; setView('journal'); toast('Blank demo opened. Entries last only while this page is open.'); });
 $('explore-demo').addEventListener('click', () => { session = session === sample && blank ? blank : sample; setView('journal'); });

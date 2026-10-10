@@ -391,7 +391,6 @@ summary { cursor: pointer; padding: 10px 0; font-size: .94rem; }
 .chart-container { overflow: visible; min-height: 0; }
 .chart-container svg { min-width: 0; max-width: 100%; }
 .chart-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.chart-controls label:first-child { grid-column: 1 / -1; }
 .chart-scale { margin: 18px 0 0; font-size: .94rem; font-weight: 500; }
 .chart-panel .chart-note { margin-top: 4px; }
 .chart-panel + .chart-panel { margin-top: 16px; border-top: 1px solid var(--line); }

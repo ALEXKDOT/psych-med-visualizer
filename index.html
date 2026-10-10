@@ -9,8 +9,8 @@
   <meta name="description" content="A temporary ADHD symptom and medication journal. Entries stay in memory and are cleared when you leave or refresh.">
   <title>ResponseMap | Symptom and medication journal</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=five-symptoms-20261010">
-  <script type="module" src="./src/app.mjs?v=five-symptoms-20261010"></script>
+  <link rel="stylesheet" href="./styles.css?v=chart-checkboxes-20261010">
+  <script type="module" src="./src/app.mjs?v=chart-checkboxes-20261010"></script>
 </head>
 <body spellcheck="false">
 <noscript><p class="error-banner">Enable JavaScript to use the journal.</p></noscript>
@@ -56,8 +56,8 @@
           <section class="card" id="latest-card"><h2>Latest check-in</h2><div id="latest-checkin"></div></section>
           <section class="card chart-card" id="daily-chart-card" aria-labelledby="chart-title">
             <div class="card-heading"><div><h2 id="chart-title">Today’s pattern</h2><p id="daily-coverage"></p></div></div>
-            <div class="chart-controls"><label>Variable<select id="primary-variable"></select></label><label>Time range<select id="chart-range"><option value="full">Full day</option><option value="morning">Morning · 6–12</option><option value="afternoon">Afternoon · 12–18</option><option value="evening">Evening · 18–24</option></select></label><label>Chart layout<select id="chart-layout"><option value="small">Separate charts</option><option value="overlay" selected>Overlay</option></select></label></div>
-            <details id="compare-variables" open><summary>Chart variables</summary><div class="variable-toggles" id="variable-toggles"></div></details>
+            <div class="chart-controls"><label>Time range<select id="chart-range"><option value="full">Full day</option><option value="morning">Morning · 6–12</option><option value="afternoon">Afternoon · 12–18</option><option value="evening">Evening · 18–24</option></select></label><label>Chart layout<select id="chart-layout"><option value="small">Separate charts</option><option value="overlay" selected>Overlay</option></select></label></div>
+            <details id="compare-variables" open><summary>Compare variables</summary><div class="variable-toggles" id="variable-toggles"></div></details>
             <div id="daily-chart" class="chart-container"></div>
             <div class="chart-footer"><label class="check-label"><input autocomplete="off" type="checkbox" id="show-medication" checked> Show medication events</label><button class="text-button" id="manage-trackers">Select variables ↗</button></div>
             <p class="chart-note">Tap a point to pin details. Use arrow keys within a chart. Gaps remain unmeasured; patterns do not establish medication effects.</p>
