@@ -53,7 +53,7 @@ Each check-in has `id`, `date`, `time`, `reporter`, `context`, `note`, `medicati
 
 The associated observations reference `checkInId` and retain shared date/time, reporter, context, note and medication link for existing calculation helpers. Validation requires these fields to agree with the parent. Each variable appears at most once in a check-in; separate submissions at the same timestamp have distinct check-in IDs. Editing preserves existing rating IDs where possible and deletes only ratings cleared from that check-in. Legacy observations without `checkInId` remain individual entries because their original submission boundaries are unknown.
 
-Drafts and favorite order are separate in-memory UI state. Drafts are keyed by date and workflow, with editing drafts keyed by record ID. “Now” anchors to the first recording interaction; explicit earlier times are never overwritten. Reloading or leaving clears all drafts.
+Drafts and favorite order are separate in-memory UI state. Drafts are keyed by date and workflow, with editing drafts keyed by record ID. The check-in and medication time fields are initialized to the current local clock time. “Now” fills the current clock time at the moment the button is pressed, preserving the selected journal date. Recording uses the displayed time; entering ratings, navigating, or submitting does not replace it. The two time fields are independent. Reloading or leaving clears all drafts.
 
 ## Observation
 

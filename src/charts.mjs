@@ -235,11 +235,12 @@ export function renderDailyChart(container, dataset, options = {}) {
   if (!groups.length) groups.push([]);
   for (const group of groups) {
     const panel = document.createElement('section'); panel.className = 'chart-panel';
-    const scale = document.createElement('p'); scale.className = 'chart-scale';
-    scale.textContent = group.map(d => `${d.label}: 1 · ${d.lowLabel} / 10 · ${d.highLabel}`).join('  |  ');
+    if (options.layout !== 'overlay' && group.length) {
+      const heading = document.createElement('p'); heading.className = 'chart-scale'; heading.textContent = group[0].label; panel.append(heading);
+    }
     const count = filtered.observations.filter(o => o.date === options.date && group.some(d => d.id === o.domain)).length;
     const coverage = document.createElement('p'); coverage.className = 'chart-note'; coverage.textContent = `${count} recorded ${count === 1 ? 'rating' : 'ratings'} in this time range`;
-    const chart = document.createElement('div'); panel.append(scale, coverage, chart); container.append(panel);
+    const chart = document.createElement('div'); panel.append(coverage, chart); container.append(panel);
     renderDailyPanel(chart, filtered, { ...options, domainIds: group.map(d => d.id), timeBounds });
   }
 }
@@ -311,7 +312,7 @@ export function renderTrendChart(container, dataset, options = {}) {
   for (const domain of domains) {
     const panel = document.createElement('section'); panel.className = 'chart-panel';
     const heading = document.createElement('p'); heading.className = 'chart-scale';
-    heading.textContent = `${domain.label}: 1 · ${domain.lowLabel} / 10 · ${domain.highLabel}`;
+    heading.textContent = domain.label;
     const chart = document.createElement('div'); panel.append(heading, chart); container.append(panel);
     renderTrendPanel(chart, dataset, { ...options, domainIds: [domain.id] });
   }

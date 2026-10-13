@@ -1,13 +1,15 @@
 import {
   createBlankDataset, createDemoDataset, getDomains, domainLabel, makeId, localDateString,
   validateDataset, getCheckIns, saveCheckIn, deleteCheckIn, removeMedicationEvent,
-  resolveCheckInTime, reviewCoverage, localDateTime
-} from './model.mjs?v=five-symptoms-20261010';
-import { renderDailyChart, renderTrendChart, darkenColor } from './charts.mjs?v=five-symptoms-20261010';
+  reviewCoverage, localDateTime
+} from './model.mjs?v=dose-logger-20261013';
+import { renderDailyChart, renderTrendChart, darkenColor } from './charts.mjs?v=dose-logger-20261013';
+
+import { MEDICATIONS, medicationSelection, chooseMedication, chooseFormulation } from './medications.mjs?v=dose-logger-20261013';
 
 const $ = id => document.getElementById(id);
-const DEFAULT_TRACKERS = ['attention_focus', 'task_initiation', 'energy', 'sedation_fatigue', 'anxiety_distress'];
-const makeSession = data => ({ data, tracked: [...DEFAULT_TRACKERS], quick: [...DEFAULT_TRACKERS], visible: new Set(DEFAULT_TRACKERS), drafts: new Map(), date: localDateString() });
+const DEFAULT_TRACKERS = ['attention_focus', 'task_initiation', 'energy'];
+const makeSession = data => ({ data, tracked: [...DEFAULT_TRACKERS], quick: [...DEFAULT_TRACKERS], visible: new Set(DEFAULT_TRACKERS), drafts: new Map(), defaultDose: null, date: localDateString() });
 let sample = makeSession(createDemoDataset());
 let blank = null;
 let session = sample;
@@ -31,26 +33,21 @@ function initializeRange() { const start = new Date(); start.setDate(start.getDa
 initializeRange();
 
 function newDraft(date = session.date) {
-  return { date, time: currentTime(), timeMode: date === localDateString() ? 'now' : 'earlier', startedAt: null, values: new Map(), note: '', reporter: 'Patient', context: 'Home', link: '', sleepHours: null, sleepQuality: '', circumstances: '', touched: false };
+  return { date, time: currentTime(), values: new Map(), note: '', reporter: 'Patient', context: 'Home', link: '', sleepHours: null, sleepQuality: '', circumstances: '', touched: false };
 }
 function quickDraft() {
   const key = `checkin:${session.date}`;
   if (!session.drafts.has(key)) session.drafts.set(key, newDraft());
   return session.drafts.get(key);
 }
-function beginDraft(draft) {
-  if (draft.timeMode === 'now' && !draft.startedAt) draft.startedAt = resolveCheckInTime(draft);
-  draft.touched = true;
-}
-function draftTime(draft) { return draft.timeMode === 'now' && draft.startedAt ? draft.startedAt : resolveCheckInTime(draft); }
+function beginDraft(draft) { draft.touched = true; }
+function draftTime(draft) { return { date: draft.date, time: draft.time }; }
 function updateDraftLabel() {
   const draft = quickDraft();
   $('draft-status').textContent = draft.touched ? 'Draft kept' : '';
   $('checkin-now').textContent = session.drafts.get(`checkin:${localDateString()}`)?.touched ? 'Resume check-in' : 'Check in now';
-  $('quick-title').textContent = draft.timeMode === 'now' ? 'Check in now' : 'Add a check-in';
-  $('quick-timestamp').textContent = draft.timeMode === 'now'
-    ? draft.startedAt ? `Recording started ${dateLabel(draft.startedAt.date)} at ${timeLabel(draft.startedAt.time)}. Select Earlier to change it.` : 'Time is set when you start recording.'
-    : `Recording for ${dateLabel(draft.date)} at your chosen time.`;
+  $('quick-title').textContent = 'Check in';
+  $('quick-timestamp').textContent = `For ${dateLabel(draft.date, { weekday: 'short', year: 'numeric' })}. Use the time shown or choose another time.`;
 }
 function readQuick() {
   const draft = quickDraft();
@@ -64,10 +61,6 @@ function readQuick() {
 }
 function renderQuick() {
   const draft = quickDraft();
-  $('quick-when').value = draft.timeMode;
-  $('quick-when').options[0].disabled = session.date !== localDateString();
-  $('quick-time-field').hidden = draft.timeMode !== 'earlier';
-  $('quick-time').required = draft.timeMode === 'earlier';
   $('quick-time').value = draft.time;
   $('quick-note').value = draft.note;
   selectValue($('quick-context'), draft.context);
@@ -131,7 +124,7 @@ function render() {
   $('footer-mode').textContent = 'Entries disappear on refresh';
   $('journal-date').value = session.date;
   $('day-label').textContent = dateLabel(session.date, { weekday: 'long', year: 'numeric' });
-  renderQuick(); renderChartControls(); renderDaily(); renderTimeline(); renderHours();
+  renderQuick(); renderDoseLogger(); renderChartControls(); renderDaily(); renderTimeline(); renderHours();
   if (currentView === 'settings') renderSettings();
   if (currentView === 'trends') renderReview();
 }
@@ -185,6 +178,99 @@ function renderHours() {
     button.addEventListener('click', () => openEntry('checkin', null, time)); $('hour-strip').append(button);
   }
 }
+function doseDraft() {
+  const key = `dose:${session.date}`;
+  if (!session.drafts.has(key)) session.drafts.set(key, {
+    time: currentTime(), brandId: '', formId: '', doseText: '',
+    ...session.defaultDose, saveDefault: false, message: ''
+  });
+  return session.drafts.get(key);
+}
+function doseChoice({ id, name, value, title, detail, selected, onChange }) {
+  const label = node('label', 'dose-choice');
+  const input = node('input'); input.type = 'radio'; input.id = id; input.name = name; input.value = value; input.checked = selected;
+  const box = node('span', 'dose-choice-box', title);
+  label.append(input, box);
+  if (detail) label.append(node('em', 'medication-generic', detail));
+  input.addEventListener('change', () => {
+    onChange(); doseDraft().message = ''; $('dose-error').textContent = '';
+    renderDoseLogger(); $(id).focus();
+  });
+  return label;
+}
+function renderDoseLogger() {
+  const draft = doseDraft();
+  $('dose-error').textContent = '';
+  const brand = MEDICATIONS.find(item => item.id === draft.brandId);
+  const form = brand?.forms.find(item => item.id === draft.formId);
+  const selection = medicationSelection(draft);
+  $('dose-date').textContent = `For ${dateLabel(session.date, { weekday: 'short', year: 'numeric' })}`;
+  $('dose-time').value = draft.time;
+  for (const [target, list] of [['dose-brands', MEDICATIONS.slice(0, 8)], ['dose-more-brands', MEDICATIONS.slice(8)]]) {
+    $(target).replaceChildren(...list.map(item => doseChoice({
+      id: `dose-brand-${item.id}`, name: 'dose-brand', value: item.id, title: item.brand, detail: item.generic,
+      selected: draft.brandId === item.id, onChange: () => chooseMedication(draft, item.id)
+    })));
+  }
+  if (MEDICATIONS.slice(8).some(item => item.id === draft.brandId)) $('more-medications').open = true;
+  $('dose-formulation-step').hidden = !brand;
+  $('dose-formulations').replaceChildren(...(brand?.forms || []).map(item => doseChoice({
+    id: `dose-form-${item.id}`, name: 'dose-formulation', value: item.id, title: item.name,
+    selected: draft.formId === item.id, onChange: () => chooseFormulation(draft, item.id)
+  })));
+  $('dose-strength-step').hidden = !form;
+  $('dose-strengths').replaceChildren(...(form?.doses || []).map((dose, index) => doseChoice({
+    id: `dose-strength-${index}`, name: 'dose-strength', value: dose, title: dose,
+    selected: draft.doseText === dose, onChange: () => { draft.doseText = dose; draft.saveDefault = false; }
+  })));
+  if (form) $('dose-source').href = form.source;
+  else $('dose-source').removeAttribute('href');
+  $('dose-confirmation').hidden = !selection;
+  $('dose-selection').textContent = selection ? `${selection.medication} · ${selection.formulation} · ${selection.doseText}` : '';
+  $('dose-default').checked = draft.saveDefault;
+  $('dose-status').textContent = draft.message;
+  const favorite = medicationSelection(session.defaultDose || {});
+  $('dose-default-summary').hidden = !favorite;
+  $('dose-default-description').textContent = favorite ? `Session default: ${favorite.medication} · ${favorite.formulation} · ${favorite.doseText}` : '';
+}
+function updateDoseTime(time) {
+  doseDraft().time = time; doseDraft().message = '';
+  $('dose-time').value = time; $('dose-status').textContent = ''; $('dose-error').textContent = '';
+}
+$('dose-time').addEventListener('input', () => updateDoseTime($('dose-time').value));
+$('dose-time-now').addEventListener('click', () => { updateDoseTime(currentTime()); $('dose-time').focus(); });
+$('dose-default').addEventListener('change', () => { doseDraft().saveDefault = $('dose-default').checked; });
+$('use-default-dose').addEventListener('click', () => {
+  Object.assign(doseDraft(), session.defaultDose, { saveDefault: false, message: '' });
+  renderDoseLogger(); $('dose-time').focus();
+});
+$('clear-default-dose').addEventListener('click', () => {
+  session.defaultDose = null; doseDraft().saveDefault = false;
+  renderDoseLogger(); $('dose-time').focus(); toast('Default medication cleared.');
+});
+$('discard-dose').addEventListener('click', () => {
+  session.drafts.delete(`dose:${session.date}`); $('dose-error').textContent = '';
+  $('more-medications').open = false; renderDoseLogger(); $('dose-time').focus(); toast('Medication draft discarded.');
+});
+$('other-medication').addEventListener('click', () => openEntry('medication', null, doseDraft().time || currentTime()));
+$('dose-form').addEventListener('submit', event => {
+  event.preventDefault(); $('dose-error').textContent = '';
+  const draft = doseDraft(), selection = medicationSelection(draft);
+  if (!selection) { $('dose-error').textContent = 'Choose a medication, formulation, and dose.'; return; }
+  if (!localDateTime(session.date, draft.time)) { $('dose-error').textContent = 'Choose a valid time.'; return; }
+  if (!transact(next => next.medicationEvents.push({
+    id: makeId('medication'), date: session.date, time: draft.time, ...selection, status: 'taken', note: ''
+  }))) return;
+  if (draft.saveDefault) session.defaultDose = { brandId: draft.brandId, formId: draft.formId, doseText: draft.doseText };
+  const confirmation = `${selection.medication} ${selection.doseText} recorded at ${timeLabel(draft.time)}.${draft.saveDefault ? ' Default saved for this session.' : ''}`;
+  session.drafts.delete(`dose:${session.date}`);
+  doseDraft().message = confirmation;
+  // A just-recorded dose must be visible even if the chart had hidden medication
+  // events or was narrowed to a different part of the day.
+  $('show-medication').checked = true; $('chart-range').value = 'full';
+  $('more-medications').open = false;
+  render(); $('dose-time').focus(); toast(confirmation);
+});
 function entrySummary(item) {
   const content = node('div', 'timeline-content');
   const med = item.type === 'medication';
@@ -227,15 +313,14 @@ function entryRow(item) {
 }
 function renderTimeline() {
   const checkIns = getCheckIns(session.data).filter(c => c.date === session.date).reverse().sort((a, b) => b.time.localeCompare(a.time));
-  $('latest-checkin').replaceChildren(checkIns.length ? entryRow(checkIns[0]) : node('p', 'empty-state', 'Start with one observation. There’s no need to fill every rating or every hour.'));
   const filter = $('entry-filter').value;
   const entries = [
-    ...(filter !== 'medication' ? checkIns.slice(1) : []),
+    ...(filter !== 'medication' ? checkIns : []),
     ...(filter !== 'symptoms' ? session.data.medicationEvents.filter(e => e.date === session.date).map(e => ({ ...e, type: 'medication' })) : [])
   ].sort((a, b) => b.time.localeCompare(a.time));
-  $('entries-description').textContent = `${checkIns.length} ${checkIns.length === 1 ? 'check-in' : 'check-ins'} for ${dateLabel(session.date)} · latest shown above`;
+  $('entries-description').textContent = `${checkIns.length} ${checkIns.length === 1 ? 'check-in' : 'check-ins'} for ${dateLabel(session.date)}`;
   $('timeline').replaceChildren(...entries.map(entryRow));
-  if (!entries.length) $('timeline').append(node('p', 'empty-state', 'No earlier entries for this selection.'));
+  if (!entries.length) $('timeline').append(node('p', 'empty-state', 'No entries for this selection.'));
 }
 function populateLinks(selected = '') {
   const events = [...session.data.medicationEvents].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
@@ -244,15 +329,15 @@ function populateLinks(selected = '') {
 function openEntry(type, existing = null, time = null) {
   const med = type === 'medication';
   // Hourly capture uses a separate draft and never replaces the quick draft.
-  dialogKey = existing ? `edit:${existing.id}` : time ? `hour:${session.date}:${time}` : `${type}:${session.date}`;
+  dialogKey = existing ? `edit:${existing.id}` : time ? `${type}:${session.date}:${time}` : `${type}:${session.date}`;
   const stored = session.drafts.get(dialogKey);
   dialogDraft = stored ? clone(stored) : existing ? {
-    ...newDraft(existing.date), ...existing, values: new Map((existing.ratings || []).map(o => [o.domain, o.score])), link: existing.medicationEventId || '', timeMode: 'earlier'
+    ...newDraft(existing.date), ...existing, values: new Map((existing.ratings || []).map(o => [o.domain, o.score])), link: existing.medicationEventId || ''
   } : newDraft();
-  if (time && !stored) { dialogDraft.time = time; dialogDraft.timeMode = 'earlier'; }
+  if (time && !stored) dialogDraft.time = time;
   beginDraft(dialogDraft);
   const stamp = draftTime(dialogDraft);
-  dialogDraft.date = stamp.date; dialogDraft.time = stamp.time; dialogDraft.timeMode = 'earlier';
+  dialogDraft.date = stamp.date; dialogDraft.time = stamp.time;
   dialogSaved = false;
   $('entry-form').reset(); $('entry-error').textContent = '';
   $('entry-id').value = existing?.id || ''; $('entry-type').value = type;
@@ -273,7 +358,7 @@ function openEntry(type, existing = null, time = null) {
   $('entry-dialog').showModal();
 }
 function readDialog() {
-  Object.assign(dialogDraft, { date: $('entry-date').value, time: $('entry-time').value, timeMode: 'earlier', note: $('entry-note').value,
+  Object.assign(dialogDraft, { date: $('entry-date').value, time: $('entry-time').value, note: $('entry-note').value,
     reporter: $('entry-reporter').value, context: $('entry-context').value, link: $('entry-link').value,
     sleepHours: $('entry-sleep-hours').value === '' ? null : Number($('entry-sleep-hours').value), sleepQuality: $('entry-sleep-quality').value, circumstances: $('entry-circumstances').value,
     medication: $('medication-name').value, formulation: $('medication-formulation').value, doseText: $('medication-dose').value, status: $('medication-status').value });
@@ -310,12 +395,10 @@ $('entry-form').addEventListener('submit', event => {
   dialogSaved = true; $('entry-dialog').close(); render(); toast(id ? 'Entry updated.' : med ? 'Medication recorded.' : 'Check-in recorded.');
 });
 for (const id of ['quick-note', 'quick-context', 'quick-time', 'quick-sleep-hours', 'quick-sleep-quality', 'quick-circumstances']) $(id).addEventListener('input', () => { beginDraft(readQuick()); updateDraftLabel(); });
-$('quick-when').addEventListener('change', () => {
-  const draft = readQuick(); const previousTime = draftTime(draft);
-  draft.timeMode = $('quick-when').value;
-  draft.time = previousTime.time; draft.startedAt = null;
-  if (draft.timeMode === 'now' && draft.touched) beginDraft(draft);
-  renderQuick();
+$('quick-time-now').addEventListener('click', () => {
+  const draft = readQuick(); draft.time = currentTime(); beginDraft(draft);
+  $('quick-time').value = draft.time; $('quick-error').textContent = '';
+  updateDraftLabel(); $('quick-time').focus();
 });
 $('discard-quick').addEventListener('click', () => { session.drafts.delete(`checkin:${session.date}`); $('quick-error').textContent = ''; renderQuick(); toast('Draft discarded.'); });
 
@@ -325,7 +408,7 @@ function renderSettings() {
 }
 function renderQuickPreferences() {
   $('quick-preferences').replaceChildren();
-  for (let index = 0; index < DEFAULT_TRACKERS.length; index++) {
+  for (let index = 0; index < 5; index++) {
     const label = node('label', '', `Variable ${index + 1}${index >= 2 ? ' (optional)' : ''}`);
     const select = node('select'); select.id = `quick-favorite-${index}`;
     setOptions(select, [...(index >= 2 ? [['None', '']] : []), ...domains().map(d => [d.label, d.id])], session.quick[index] || '');
@@ -338,7 +421,7 @@ function renderQuickPreferences() {
         if (!previous && other < 2) { $('preferences-error').textContent = 'That variable is already a favorite. Choose another variable for this slot.'; select.value = ''; return; }
         $(`quick-favorite-${other}`).value = previous;
       }
-      const ids = DEFAULT_TRACKERS.map((_, i) => $(`quick-favorite-${i}`).value);
+      const ids = Array.from({ length: 5 }, (_, i) => $(`quick-favorite-${i}`).value);
       $('preferences-error').textContent = ''; session.quick = ids;
       for (const id of ids.filter(Boolean)) if (!session.tracked.includes(id)) session.tracked.push(id);
       renderQuick(); renderChartControls(); renderCatalog();
@@ -423,7 +506,7 @@ function renderReview() {
   $('review-medications').append(createTable(['Date & time', 'Medication', 'Formulation', 'Dose', 'Status', 'Notes'], meds.map(e => [`${e.date} ${e.time}`, e.medication, e.formulation, e.doseText, e.status, e.note])));
   $('review-observations').append(createTable(['Date & time', 'Ratings', 'Reporter / context', 'Notes & circumstances'], checkIns.map(c => [`${c.date} ${c.time}`, c.ratings.map(o => `${domainLabel(o.domain, session.data)} ${o.score}/10`).join('; ') || 'Note only', `${c.reporter} / ${c.context}`, [c.note, c.sleepHours !== null ? `Sleep ${c.sleepHours} h` : '', c.sleepQuality, c.circumstances].filter(Boolean).join(' · ')])));
 }
-function openReviewDay(date) { session.date = date; setView('journal'); const target = $($('daily-chart-card').hidden ? 'latest-card' : 'daily-chart-card'); target.tabIndex = -1; target.focus(); }
+function openReviewDay(date) { session.date = date; setView('journal'); const target = $($('daily-chart-card').hidden ? 'quick-form' : 'daily-chart-card'); target.tabIndex = -1; target.focus(); }
 function changeDate(date) { if (!localDateTime(date, '12:00')) return; session.date = date; $('quick-error').textContent = ''; render(); }
 function moveDate(offset) { const date = new Date(`${session.date}T12:00:00`); date.setDate(date.getDate() + offset); changeDate(localDateString(date)); }
 for (const key of ['concerns', 'goals', 'questions']) $('visit-' + key).addEventListener('input', () => { session.data.visitPlanning ||= { concerns: '', goals: '', questions: '' }; session.data.visitPlanning[key] = $('visit-' + key).value; session.data.updatedAt = new Date().toISOString(); });
@@ -432,9 +515,13 @@ for (const id of ['show-medication', 'chart-range', 'chart-layout']) $(id).addEv
 $('tracker-search').addEventListener('input', renderCatalog);
 $('start-journal').addEventListener('click', () => { blank ||= makeSession(createBlankDataset()); session = blank; setView('journal'); toast('Blank demo opened. Entries last only while this page is open.'); });
 $('explore-demo').addEventListener('click', () => { session = session === sample && blank ? blank : sample; setView('journal'); });
-$('log-medication').addEventListener('click', () => openEntry('medication'));
+$('log-medication').addEventListener('click', () => $('dose-time').focus());
 $('full-checkin').addEventListener('click', () => { readQuick(); openEntry('checkin'); });
-$('checkin-now').addEventListener('click', () => { changeDate(localDateString()); $('quick-form').focus(); });
+$('checkin-now').addEventListener('click', () => {
+  changeDate(localDateString());
+  if (!quickDraft().touched) { quickDraft().time = currentTime(); renderQuick(); }
+  $('quick-form').focus();
+});
 $('add-note').addEventListener('click', () => $('quick-note').focus());
 $('skip-checkin').addEventListener('click', event => { event.preventDefault(); setView('journal'); $('quick-form').focus(); });
 $('manage-trackers').addEventListener('click', () => { setView('settings'); $('tracker-search').focus(); });

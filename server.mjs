@@ -11,7 +11,8 @@ const publicFiles = new Map([
   ["/favicon.svg", "favicon.svg"],
   ["/src/app.mjs", "src/app.mjs"],
   ["/src/model.mjs", "src/model.mjs"],
-  ["/src/charts.mjs", "src/charts.mjs"]
+  ["/src/charts.mjs", "src/charts.mjs"],
+  ["/src/medications.mjs", "src/medications.mjs"]
 ]);
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",

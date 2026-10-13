@@ -405,7 +405,6 @@ summary { cursor: pointer; padding: 10px 0; font-size: .94rem; }
 .timeline-content { flex: 1; min-width: 160px; }
 .row-actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
 .row-actions button { padding: 8px; }
-#latest-checkin .timeline-row { padding-bottom: 0; }
 .empty-state { font-size: 1rem; text-align: left; padding: 18px 0 0; }
 .hour-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .hour-button { font-size: .875rem; }
@@ -460,7 +459,6 @@ dialog { scroll-padding-bottom: 100px; }
 }
 .notes-label { display: block; }
 .notes-label textarea { display: block; margin-top: 6px; }
-.quick-card .field-row:has(> [hidden]) > label:first-child { grid-column: 1 / -1; }
 #quick-timestamp { margin: 0; }
 #checkin-now { flex-shrink: 0; }
 @media (min-width: 1151px) { #entry-ratings .rating-options { grid-template-columns: repeat(10, minmax(0, 1fr)); } }
@@ -487,3 +485,47 @@ dialog { scroll-padding-bottom: 100px; }
 /* Mint keeps the brand and keyboard focus visible against the navy navigation. */
 .sidebar .brand-symbol, .sidebar .avatar { color: #bddac8; }
 .sidebar :focus-visible { outline-color: #bddac8; }
+
+/* Stepwise medication logging. */
+.medication-card { border-top: 2px solid #526778; }
+.medication-card form { display: grid; gap: 16px; }
+.medication-card .card-heading { margin-bottom: 16px; }
+.dose-time-row { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.time-with-now { display: flex; align-items: flex-end; gap: 8px; }
+.time-with-now > label { width: 155px; min-width: 0; }
+.time-with-now input { min-height: 44px; }
+.time-with-now > button { min-height: 44px; flex-shrink: 0; }
+.dose-default-summary { flex: 1; min-width: 180px; font-size: .8rem; color: var(--muted); }
+.dose-default-summary .button-row { gap: 14px; margin-top: 2px; }
+.dose-step { padding: 0; margin: 0; min-width: 0; border: 0; }
+.dose-step legend { padding: 0; margin-bottom: 10px; font-size: .9rem; font-weight: 600; }
+.step-number { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid #c4cecd; border-radius: 50%; font-size: .75rem; margin-right: 6px; color: #52616b; }
+.medication-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; }
+.dose-choice { display: flex; position: relative; flex-direction: column; gap: 5px; min-width: 0; cursor: pointer; text-align: center; }
+.dose-choice input { position: absolute; opacity: 0; width: 1px; height: 1px; min-height: 0; padding: 0; }
+.dose-choice-box { display: flex; align-items: center; justify-content: center; min-height: 44px; height: 100%; border: 1px solid #aab8bb; border-radius: 5px; background: #faf8f5; padding: 9px 8px; font-size: .86rem; color: #152c43; line-height: 1.3; }
+.dose-choice input:checked + .dose-choice-box { background: #e7effb; border-color: #2361b6; box-shadow: inset 0 0 0 1px #2361b6; color: #174b91; font-weight: 600; }
+.dose-choice:hover .dose-choice-box { border-color: #2361b6; }
+.dose-choice input:focus-visible + .dose-choice-box { outline: 2px solid #2361b6; outline-offset: 3px; }
+.medication-choices .dose-choice-box { height: auto; flex: none; }
+.medication-generic { font-size: .71rem; color: #52616b; line-height: 1.35; font-weight: 400; overflow-wrap: anywhere; }
+.dose-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.dose-options .dose-choice { flex: 0 1 auto; min-width: 65px; }
+.dose-options .dose-choice-box { padding-inline: 12px; }
+.dose-step .chart-note { margin: 0 0 9px; }
+#dose-formulation-step .chart-note { margin: 8px 0 0; }
+.dose-source { display: inline-block; font-size: .75rem; color: #52616b; margin-top: 10px; text-underline-offset: 3px; }
+.dose-confirmation { border-top: 1px solid var(--line); padding-top: 14px; }
+.dose-selection { margin: 0 0 8px; font-size: .9rem; font-weight: 600; }
+.dose-confirmation .check-label { align-items: center; font-size: .86rem; }
+.dose-confirmation .chart-note { margin: 0 0 14px; font-size: .78rem; }
+.button.primary.record-dose { background: #2463bd; border-color: #2463bd; color: white; }
+.button.primary.record-dose:hover { background: #194d98; border-color: #194d98; }
+.dose-status { margin: 0; font-size: .88rem; color: #245641; }
+.dose-status:empty { display: none; }
+#dose-error:empty { display: none; }
+#more-medications summary { color: #52616b; font-size: .8rem; padding-bottom: 0; }
+#more-medications[open] summary { padding-bottom: 10px; }
+@media (min-width: 1001px) and (max-width: 1250px), (max-width: 520px) {
+  .medication-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -93,7 +93,7 @@ test("a production build contains only public assets and no data-writing or netw
   const builtFiles = await filesBelow(output);
   assert.ok(builtFiles.includes("index.html"));
   assert.ok(builtFiles.includes("src/app.mjs"));
-  const allowedAssets = new Set(["index.html", "styles.css", "favicon.svg", "src/app.mjs", "src/model.mjs", "src/charts.mjs", ".nojekyll"]);
+  const allowedAssets = new Set(["index.html", "styles.css", "favicon.svg", "src/app.mjs", "src/model.mjs", "src/charts.mjs", "src/medications.mjs", ".nojekyll"]);
   const forbiddenCode = [
     /\b(?:localStorage|sessionStorage|indexedDB|openDatabase|showSaveFilePicker|showOpenFilePicker)\b/,
     /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|RTCPeerConnection|sendBeacon)\b/,
