@@ -1,6 +1,13 @@
 # ResponseMap 1.2 verification
 
-Verified on October 10, 2026, with fictional data only.
+Verified on October 10, 2026, with the Harbor palette rechecked on October 13, 2026. Fictional data only.
+
+## Harbor palette verification
+
+- All 50 existing tests, syntax checks, and the production build pass. The chart-contrast test now reads the actual `--paper` color from the stylesheet.
+- The implemented UI matches the approved Harbor preview's measured geometry, typography, and colors at 1440- and 390-pixel widths. The application, model, and chart modules are unchanged.
+- All 29 checks against the production assets pass, including filters, rating and chart keyboard navigation, recording, medication dialog, visit summary, and settings. Automated WCAG A/AA checks report no violations in the tested views, and page overflow checks pass at 320, 390, 768, and 1440 pixels.
+- The approved Harbor palette was also inspected for visible keyboard focus in the navy navigation and rating controls, legible chart labels, and readable text, controls, and hover states. Mint navigation focus and a darker content focus color preserve visibility on their respective surfaces.
 
 ## Automated checks
 

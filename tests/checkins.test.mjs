@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createBlankDataset, createDemoDataset, saveCheckIn, getCheckIns, deleteCheckIn, removeMedicationEvent, resolveCheckInTime, reviewCoverage, validateDataset, localDateString } from '../src/model.mjs';
 import { darkenColor } from '../src/charts.mjs';
 import { DOMAINS } from '../src/model.mjs';
@@ -91,7 +92,10 @@ test('sample history demonstrates sparse timing, a missed day and five ratings p
 
 test('every built-in chart stroke exceeds 3:1 contrast on the plot background', () => {
   const luminance = hex => hex.slice(1).match(/../g).map(x => parseInt(x, 16) / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4).reduce((sum, x, i) => sum + x * [.2126, .7152, .0722][i], 0);
-  const paper = luminance('#fbf8ef');
+  const stylesheet = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const paperColor = stylesheet.match(/--paper:\s*(#[0-9a-f]{6})/i)?.[1];
+  assert.ok(paperColor, 'The plot background must have an explicit color token');
+  const paper = luminance(paperColor);
   for (const domain of DOMAINS) assert.ok((paper + .05) / (luminance(darkenColor(domain.color)) + .05) >= 3, domain.label);
 });
 
